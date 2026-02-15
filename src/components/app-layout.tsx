@@ -35,9 +35,15 @@ export function AppLayout({ className, children }: AppLayoutProps) {
 
   const [splitViewHref, setSplitViewHref] = React.useState<string | null>(null)
   const [splitViewWidth, setSplitViewWidth] = React.useState(40)
-  const [isResizingSplitView, setIsResizingSplitView] = React.useState(false)
   const splitContainerRef = React.useRef<HTMLDivElement>(null)
+  const mainContentRef = React.useRef<HTMLDivElement>(null)
+  const splitPaneRef = React.useRef<HTMLDivElement>(null)
+  const separatorRef = React.useRef<HTMLDivElement>(null)
+  const splitViewWidthRef = React.useRef(40)
   const stopResizeRef = React.useRef<(() => void) | null>(null)
+
+  // Keep the ref in sync when state changes (e.g., on open/close)
+  splitViewWidthRef.current = splitViewWidth
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "app-layout",
@@ -109,21 +115,30 @@ export function AppLayout({ className, children }: AppLayoutProps) {
   const startResize = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault()
 
-    setIsResizingSplitView(true)
-    document.body.style.userSelect = "none"
-    document.body.style.cursor = "col-resize"
+    // Use data attribute to trigger CSS cursor and pointer-events rules
+    separatorRef.current?.setAttribute("data-resizing", "true")
 
     const handleMouseMove = (mouseEvent: MouseEvent) => {
       if (!splitContainerRef.current) return
       const rect = splitContainerRef.current.getBoundingClientRect()
-      const nextWidth = ((rect.right - mouseEvent.clientX) / rect.width) * 100
-      setSplitViewWidth(Math.min(70, Math.max(25, nextWidth)))
+      const nextWidth = Math.min(
+        70,
+        Math.max(25, ((rect.right - mouseEvent.clientX) / rect.width) * 100),
+      )
+      splitViewWidthRef.current = nextWidth
+      // Update DOM directly to avoid React re-renders during drag
+      if (mainContentRef.current) {
+        mainContentRef.current.style.width = `${100 - nextWidth}%`
+      }
+      if (splitPaneRef.current) {
+        splitPaneRef.current.style.width = `${nextWidth}%`
+      }
     }
 
     const stopResize = () => {
-      setIsResizingSplitView(false)
-      document.body.style.removeProperty("user-select")
-      document.body.style.removeProperty("cursor")
+      separatorRef.current?.removeAttribute("data-resizing")
+      // Sync final width to React state
+      setSplitViewWidth(splitViewWidthRef.current)
       window.removeEventListener("mousemove", handleMouseMove, true)
       window.removeEventListener("mouseup", stopResize, true)
       window.removeEventListener("blur", stopResize)
@@ -152,7 +167,7 @@ export function AppLayout({ className, children }: AppLayoutProps) {
   if (isEmbeddedFrame) {
     return (
       <SplitViewContext.Provider value={splitViewContext}>
-        <div className={cx("h-full overflow-hidden", className)}>{children}</div>
+        <div className={cx("grid h-full overflow-hidden", className)}>{children}</div>
       </SplitViewContext.Provider>
     )
   }
@@ -176,7 +191,8 @@ export function AppLayout({ className, children }: AppLayoutProps) {
               <div className="grid h-full grid-rows-[1fr_auto] overflow-hidden">
                 <div ref={splitContainerRef} className="flex min-h-0 grow overflow-hidden">
                   <div
-                    className="min-h-0 min-w-0 overflow-hidden"
+                    ref={mainContentRef}
+                    className="grid min-h-0 min-w-0 overflow-hidden"
                     style={{ width: isSplitViewOpen ? `${100 - splitViewWidth}%` : "100%" }}
                   >
                     {children}
@@ -184,6 +200,7 @@ export function AppLayout({ className, children }: AppLayoutProps) {
                   {isSplitViewOpen ? (
                     <>
                       <div
+                        ref={separatorRef}
                         role="separator"
                         aria-orientation="vertical"
                         className="relative hidden w-px shrink-0 bg-border-secondary print:hidden lg:block"
@@ -193,12 +210,11 @@ export function AppLayout({ className, children }: AppLayoutProps) {
                           aria-label="Resize split view"
                           className="absolute inset-y-0 -left-1.5 -right-1.5 z-10 cursor-col-resize"
                           onMouseDown={startResize}
-                        >
-                          <span className="absolute left-1/2 top-1/2 z-20 h-10 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border-secondary bg-bg-secondary shadow-sm" />
-                        </button>
+                        />
                       </div>
                       <div
-                        className="relative hidden min-h-0 min-w-0 shrink-0 bg-bg-secondary print:hidden lg:block"
+                        ref={splitPaneRef}
+                        className="relative hidden min-h-0 min-w-0 shrink-0 print:hidden lg:block"
                         style={{ width: `${splitViewWidth}%` }}
                       >
                         <iframe
@@ -206,9 +222,6 @@ export function AppLayout({ className, children }: AppLayoutProps) {
                           src={splitViewHref ?? undefined}
                           className="h-full w-full border-0"
                         />
-                        {isResizingSplitView ? (
-                          <div className="absolute inset-0 z-30 cursor-col-resize" />
-                        ) : null}
                       </div>
                     </>
                   ) : null}

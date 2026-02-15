@@ -33,9 +33,10 @@ input[type="search"]::-webkit-search-cancel-button {
   appearance: none;
 }
 
-/* Show resize cursor when resizing */
+/* Show resize cursor and disable interactions when resizing panels */
 body:has([data-resizing="true"]) {
   cursor: col-resize;
+  user-select: none;
 }
 
 body:has([data-resizing="true"]) * {

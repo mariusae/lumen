@@ -1,7 +1,7 @@
 import { EditorState, Extension, Range, StateField } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView, WidgetType } from "@codemirror/view"
 
-function createWikilinkField(navigate: (id: string) => void) {
+function createWikilinkField(navigate: (id: string, openInSplitView: boolean) => void) {
   return StateField.define<DecorationSet>({
     create(state) {
       return createDecorations(state, navigate)
@@ -19,7 +19,10 @@ function createWikilinkField(navigate: (id: string) => void) {
 
 const wikilinkRegex = /\[\[([^\]]+?)(?:\|([^\]]+))?\]\]/g
 
-function createDecorations(state: EditorState, navigate: (id: string) => void) {
+function createDecorations(
+  state: EditorState,
+  navigate: (id: string, openInSplitView: boolean) => void,
+) {
   const decorations: Range<Decoration>[] = []
   const { from, to } = state.selection.main
 
@@ -53,7 +56,7 @@ class WikilinkWidget extends WidgetType {
   constructor(
     private id: string,
     private text: string,
-    private navigate: (id: string) => void,
+    private navigate: (id: string, openInSplitView: boolean) => void,
     private startPos: number,
     private endPos: number,
   ) {
@@ -68,7 +71,7 @@ class WikilinkWidget extends WidgetType {
     this.clickHandler = (event: MouseEvent) => {
       event.preventDefault()
       if (event.ctrlKey || event.metaKey) {
-        this.navigate(this.id)
+        this.navigate(this.id, true)
       } else {
         view.dispatch({
           selection: { anchor: this.startPos, head: this.endPos },
@@ -90,6 +93,8 @@ class WikilinkWidget extends WidgetType {
   }
 }
 
-export function wikilinkExtension(navigate: (id: string) => void): Extension {
+export function wikilinkExtension(
+  navigate: (id: string, openInSplitView: boolean) => void,
+): Extension {
   return createWikilinkField(navigate)
 }

@@ -35,6 +35,7 @@ import {
   UndoIcon16,
   WidthFixedIcon16,
   WidthFullIcon16,
+  XIcon16,
 } from "../components/icons"
 import { InsertTemplateDialog, removeFrontmatterComments } from "../components/insert-template"
 import { LinkHighlightProvider } from "../components/link-highlight-provider"
@@ -77,6 +78,7 @@ type RouteSearch = {
   view: "grid" | "list"
   tasks?: string | undefined
   content?: string
+  split?: "1"
 }
 
 export const Route = createFileRoute("/_appRoot/notes_/$")({
@@ -87,6 +89,7 @@ export const Route = createFileRoute("/_appRoot/notes_/$")({
       view: search.view === "list" ? "list" : "grid",
       tasks: typeof search.tasks === "string" ? search.tasks : undefined,
       content: typeof search.content === "string" ? search.content : undefined,
+      split: search.split === "1" ? "1" : undefined,
     }
   },
   component: RouteComponent,
@@ -124,8 +127,14 @@ function renderTemplate(template: Template, args: Record<string, unknown> = {}) 
 function NotePage() {
   // Router
   const { _splat: noteId } = Route.useParams()
-  const { mode, query, view, content: defaultContent } = Route.useSearch()
+  const { mode, query, view, content: defaultContent, split } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const isSplitViewPane = split === "1" || window.self !== window.top
+
+  const closeSplitPane = React.useCallback(() => {
+    if (!isSplitViewPane) return
+    window.parent.postMessage({ type: "lumen.closeSplitView" }, window.location.origin)
+  }, [isSplitViewPane])
 
   // Global state
   const githubRepo = useAtomValue(githubRepoAtom)
@@ -621,6 +630,11 @@ function NotePage() {
             >
               {parsedNote?.pinned ? <PinFillIcon16 className="text-text-pinned" /> : <PinIcon16 />}
             </IconButton>
+            {isSplitViewPane ? (
+              <IconButton aria-label="Close split view" size="small" onClick={closeSplitPane}>
+                <XIcon16 />
+              </IconButton>
+            ) : null}
             <DropdownMenu modal={false}>
               <DropdownMenu.Trigger
                 render={
@@ -809,7 +823,7 @@ function NotePage() {
               resolvedWidth === "fixed" && "mx-auto max-w-[700px]",
             )}
           >
-            {isDailyNote || isWeeklyNote ? (
+            {(isDailyNote || isWeeklyNote) && !isSplitViewPane ? (
               <div className="print-hidden flex flex-col gap-8">
                 <Calendar className="-m-2" activeNoteId={noteId ?? ""} />
                 <CalendarHeader activeNoteId={noteId ?? ""} />
@@ -891,7 +905,7 @@ function NotePage() {
                 minHeight={160}
               />
             </div>
-            {isWeeklyNote ? (
+            {isWeeklyNote && !isSplitViewPane ? (
               <Details className="print:hidden">
                 <Details.Summary>Days</Details.Summary>
                 <DaysOfWeek week={noteId ?? ""} />

@@ -15,7 +15,7 @@ export function pasteExtension({
 
       // If the clipboard text is a URL or a Unix timestamp (likely a note ID),
       // make the selected text a link to that URL or note
-      const isUrl = /^https?:\/\//.test(clipboardText)
+      const isUrl = /^https?:\/\/\S+$/.test(clipboardText.trim())
       const isUnixTimestamp = isValidUnixTimestamp(clipboardText)
 
       if (isUrl || isUnixTimestamp) {
@@ -41,6 +41,41 @@ export function pasteExtension({
           })
 
           event.preventDefault()
+        } else if (isUrl) {
+          // No text selected, paste only a URL: fetch the title and format as [title](url)
+          const url = clipboardText.trim()
+          const placeholder = `[${url}](${url})`
+
+          view.dispatch({
+            changes: {
+              from,
+              to,
+              insert: placeholder,
+            },
+            selection: {
+              anchor: from + placeholder.length,
+            },
+          })
+
+          event.preventDefault()
+
+          fetchLinkTitle(url).then((title) => {
+            if (!title) return
+
+            // Find the placeholder in the document and replace it
+            const doc = view.state.doc.toString()
+            const placeholderIndex = doc.indexOf(placeholder)
+            if (placeholderIndex === -1) return
+
+            const replacement = `[${title}](${url})`
+            view.dispatch({
+              changes: {
+                from: placeholderIndex,
+                to: placeholderIndex + placeholder.length,
+                insert: replacement,
+              },
+            })
+          })
         }
       }
 
@@ -55,4 +90,15 @@ export function pasteExtension({
       onPaste?.(event, view)
     },
   })
+}
+
+async function fetchLinkTitle(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(`/link-metadata?url=${encodeURIComponent(url)}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.title || null
+  } catch {
+    return null
+  }
 }

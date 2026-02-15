@@ -96,7 +96,7 @@ async function fetchLinkTitle(url: string): Promise<string | null> {
   try {
     const response = await fetch(`/link-metadata?url=${encodeURIComponent(url)}`)
     if (!response.ok) return null
-    const data = await response.json()
+    const data: { title?: string } = await response.json()
     return data.title || null
   } catch {
     return null

@@ -32,6 +32,7 @@ import { useAttachFile } from "../hooks/attach-file"
 import { useSaveNote } from "../hooks/note"
 import { useStableSearchNotes } from "../hooks/search-notes"
 import { cx } from "../utils/cx"
+import { useSplitView } from "./app-layout"
 import { formatDate, formatDateDistance } from "../utils/date"
 import { generateNoteId } from "../utils/note-id"
 import { useInsertTemplate } from "./insert-template"
@@ -106,6 +107,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
     const attachFile = useAttachFile()
     const vimMode = useAtomValue(vimModeAtom)
     const navigate = useNavigate()
+    const splitView = useSplitView()
     const [isTooltipOpen, setIsTooltipOpen] = React.useState(false)
     const [isCommandKeyPressed, setIsCommandKeyPressed] = React.useState(false)
 
@@ -170,7 +172,11 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
         indentedLineWrapExtension(),
         headingExtension(),
         priorityExtension(),
-        wikilinkExtension((id) =>
+        wikilinkExtension((id, openInSplitView) => {
+          const href = `/notes/${encodeURIComponent(id)}?mode=read&view=grid`
+
+          if (openInSplitView && splitView?.openSplitView(href)) return
+
           navigate({
             to: "/notes/$",
             params: { _splat: id },
@@ -179,8 +185,8 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
               query: undefined,
               view: "grid",
             },
-          }),
-        ),
+          })
+        }),
         syntaxHighlighting(syntaxHighlighter),
       ]
 
@@ -199,6 +205,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
       tagSyntaxCompletion,
       templateCompletion,
       navigate,
+      splitView,
     ])
 
     return (

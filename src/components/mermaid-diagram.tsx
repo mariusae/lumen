@@ -55,7 +55,13 @@ export function MermaidDiagram({ children }: MermaidDiagramProps) {
   }
 
   if (!svg) {
-    return null
+    return (
+      <div className="mermaid-diagram">
+        <pre>
+          <code>{children}</code>
+        </pre>
+      </div>
+    )
   }
 
   return (

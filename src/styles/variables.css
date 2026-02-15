@@ -145,6 +145,7 @@
     --color-bg-backdrop: #111111cc;
     --color-bg-overlay-backdrop: #222222cc;
     --color-bg-code-block: var(--neutral-a2);
+    --color-bg-highlight: var(--yellow-a5);
 
     /* Border colors */
     --color-border-focus: var(--accent-11);

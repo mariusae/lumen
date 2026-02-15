@@ -7,12 +7,26 @@ mermaid.initialize({
   securityLevel: "strict",
 })
 
+// Hidden container where mermaid renders temporary elements during SVG generation.
+// Placed offscreen so the intermediate DOM work is never visible to the user.
+let offscreenContainer: HTMLDivElement | null = null
+function getOffscreenContainer() {
+  if (!offscreenContainer) {
+    offscreenContainer = document.createElement("div")
+    offscreenContainer.style.position = "absolute"
+    offscreenContainer.style.left = "-9999px"
+    offscreenContainer.style.top = "-9999px"
+    offscreenContainer.setAttribute("aria-hidden", "true")
+    document.body.appendChild(offscreenContainer)
+  }
+  return offscreenContainer
+}
+
 type MermaidDiagramProps = {
   children: string
 }
 
 export function MermaidDiagram({ children }: MermaidDiagramProps) {
-  const containerRef = React.useRef<HTMLDivElement>(null)
   const [svg, setSvg] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -22,7 +36,7 @@ export function MermaidDiagram({ children }: MermaidDiagramProps) {
 
     async function render() {
       try {
-        const { svg } = await mermaid.render(id, children.trim())
+        const { svg } = await mermaid.render(id, children.trim(), getOffscreenContainer())
         if (!cancelled) {
           setSvg(svg)
           setError(null)
@@ -64,7 +78,5 @@ export function MermaidDiagram({ children }: MermaidDiagramProps) {
     )
   }
 
-  return (
-    <div ref={containerRef} className="mermaid-diagram" dangerouslySetInnerHTML={{ __html: svg }} />
-  )
+  return <div className="mermaid-diagram" dangerouslySetInnerHTML={{ __html: svg }} />
 }

@@ -6,6 +6,7 @@
     { "source": "/file-proxy", "destination": "/api/file-proxy" },
     { "source": "/git-lfs-file", "destination": "/api/git-lfs-file" },
     { "source": "/github-auth", "destination": "/api/github-auth" },
-    { "source": "/share/:path*", "destination": "/api/share/:path*" }
+    { "source": "/share/:path*", "destination": "/api/share/:path*" },
+    { "source": "/link-metadata", "destination": "/api/link-metadata" }
   ]
 }

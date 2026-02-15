@@ -149,6 +149,12 @@
   overflow: hidden;
 }
 
+.markdown mark {
+  background-color: var(--color-bg-highlight);
+  border-radius: var(--border-radius-sm);
+  padding-inline: 0.125em;
+}
+
 .markdown .katex-html {
   display: none;
 }

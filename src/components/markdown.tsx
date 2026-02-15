@@ -24,6 +24,7 @@ import {
   moveListItemToBottom,
 } from "../utils/reorder-list-item"
 import { remarkEmbed } from "../remark-plugins/embed"
+import { remarkHighlight } from "../remark-plugins/highlight"
 import { remarkPriority } from "../remark-plugins/priority"
 import { remarkTag } from "../remark-plugins/tag"
 import { remarkWikilink } from "../remark-plugins/wikilink"
@@ -309,6 +310,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         remarkEmbed,
         remarkTag,
         remarkPriority,
+        remarkHighlight,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
       rehypePlugins={[rehypeKatex, rehypeRaw]}

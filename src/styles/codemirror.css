@@ -120,6 +120,14 @@
   @apply cursor-pointer decoration-solid ring-0;
 }
 
+.cm-editor .cm-highlight {
+  @apply rounded-sm bg-[var(--color-bg-highlight)];
+}
+
+.cm-editor .cm-highlight-marker {
+  @apply text-text-secondary;
+}
+
 .cm-editor .cm-priority {
   @apply rounded-sm px-0.5 epaper:bg-transparent epaper:px-0 epaper:text-text;
 }

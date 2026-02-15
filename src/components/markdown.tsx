@@ -43,6 +43,7 @@ import { CopyButton } from "./copy-button"
 import { Details } from "./details"
 import { DropdownMenu } from "./dropdown-menu"
 import { FilePreview } from "./file-preview"
+import { MermaidDiagram } from "./mermaid-diagram"
 import { GitHubAvatar } from "./github-avatar"
 import { IconButton } from "./icon-button"
 import {
@@ -569,6 +570,10 @@ function Code({ className, inline, children, ...props }: CodeProps) {
   }
 
   const language = className?.replace("language-", "")
+
+  if (language === "mermaid") {
+    return <MermaidDiagram>{String(children).replace(/\n$/, "")}</MermaidDiagram>
+  }
 
   return (
     <div className="pre-container relative">

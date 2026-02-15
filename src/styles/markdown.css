@@ -156,3 +156,18 @@
 .markdown [id^="user-content-fn-"] {
   color: var(--color-text-secondary);
 }
+
+.markdown .mermaid-diagram {
+  margin-block: calc(var(--font-size-base) * 1.25);
+  overflow: auto;
+}
+
+.markdown .mermaid-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown .mermaid-error {
+  margin-block: calc(var(--font-size-base) * 1.25);
+}

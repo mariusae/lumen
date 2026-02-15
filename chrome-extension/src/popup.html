@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumen Highlighter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Loading state -->
+      <div id="loading" class="view">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Setup form (shown when not configured) -->
+      <div id="setup" class="view hidden">
+        <h2>Connect to GitHub</h2>
+        <p class="hint">Enter a GitHub personal access token with repo access.</p>
+        <form id="setup-form">
+          <label>
+            Token
+            <input type="password" id="token" required placeholder="ghp_..." />
+          </label>
+          <label>
+            Username
+            <input type="text" id="login" required placeholder="octocat" />
+          </label>
+          <label>
+            Name
+            <input type="text" id="name" required placeholder="Your Name" />
+          </label>
+          <label>
+            Email
+            <input type="email" id="email" required placeholder="you@example.com" />
+          </label>
+          <label>
+            Repository owner
+            <input type="text" id="repo-owner" required placeholder="octocat" />
+          </label>
+          <label>
+            Repository name
+            <input type="text" id="repo-name" required placeholder="my-notes" />
+          </label>
+          <label>
+            Lumen app URL
+            <input type="url" id="lumen-url" required placeholder="https://lumen.town" value="https://lumen.town" />
+          </label>
+          <button type="submit" id="save-btn">Connect &amp; clone</button>
+          <div id="setup-error" class="error hidden"></div>
+        </form>
+      </div>
+
+      <!-- Main view (shown when configured) -->
+      <div id="main" class="view hidden">
+        <div id="page-status">
+          <div id="note-exists" class="hidden">
+            <div class="note-badge">Note saved</div>
+            <a id="note-link" target="_blank" rel="noopener" class="note-link">Open in Lumen</a>
+            <label class="toggle-row">
+              <span>Highlighting</span>
+              <input type="checkbox" id="highlight-toggle" class="toggle" />
+            </label>
+          </div>
+          <div id="no-note">
+            <p class="hint">No note for this page yet.</p>
+            <button id="create-btn" class="primary-btn">Save this page</button>
+          </div>
+        </div>
+        <hr />
+        <div class="footer-actions">
+          <button id="sync-btn" class="small-btn">Sync</button>
+          <button id="settings-btn" class="small-btn">Settings</button>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

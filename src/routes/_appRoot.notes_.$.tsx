@@ -6,7 +6,7 @@ import copy from "copy-to-clipboard"
 import ejs from "ejs"
 import { useAtomValue, useSetAtom } from "jotai"
 import { selectAtom } from "jotai/utils"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useEffect } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useNetworkState } from "react-use"
 import useResizeObserver from "use-resize-observer"
@@ -35,7 +35,6 @@ import {
   UndoIcon16,
   WidthFixedIcon16,
   WidthFullIcon16,
-  XIcon16,
 } from "../components/icons"
 import { InsertTemplateDialog, removeFrontmatterComments } from "../components/insert-template"
 import { LinkHighlightProvider } from "../components/link-highlight-provider"
@@ -59,6 +58,7 @@ import {
   weeklyTemplateAtom,
 } from "../global-state"
 import { useAttachFile } from "../hooks/attach-file"
+import { useEditorValue } from "../hooks/editor-value"
 import { useDeleteNote, useNoteById, useRenameNote, useSaveNote } from "../hooks/note"
 import { useSearchNotes } from "../hooks/search-notes"
 import { useValueRef } from "../hooks/value-ref"
@@ -66,7 +66,7 @@ import { Note, NoteId, Template, Width, fontSchema, widthSchema } from "../schem
 import { cx } from "../utils/cx"
 import { formatDate, formatWeek, isValidDateString, isValidWeekString } from "../utils/date"
 import { updateFrontmatterValue } from "../utils/frontmatter"
-import { clearNoteDraft, getNoteDraft, setNoteDraft } from "../utils/note-draft"
+import { clearNoteDraft } from "../utils/note-draft"
 import { getInvalidNoteIdCharacters } from "../utils/note-id"
 import { parseNote } from "../utils/parse-note"
 import { pluralize } from "../utils/pluralize"
@@ -78,7 +78,6 @@ type RouteSearch = {
   view: "grid" | "list"
   tasks?: string | undefined
   content?: string
-  split?: "1"
 }
 
 export const Route = createFileRoute("/_appRoot/notes_/$")({
@@ -89,7 +88,6 @@ export const Route = createFileRoute("/_appRoot/notes_/$")({
       view: search.view === "list" ? "list" : "grid",
       tasks: typeof search.tasks === "string" ? search.tasks : undefined,
       content: typeof search.content === "string" ? search.content : undefined,
-      split: search.split === "1" ? "1" : undefined,
     }
   },
   component: RouteComponent,
@@ -127,14 +125,8 @@ function renderTemplate(template: Template, args: Record<string, unknown> = {}) 
 function NotePage() {
   // Router
   const { _splat: noteId } = Route.useParams()
-  const { mode, query, view, content: defaultContent, split } = Route.useSearch()
+  const { mode, query, view, content: defaultContent } = Route.useSearch()
   const navigate = Route.useNavigate()
-  const isSplitViewPane = split === "1" || window.self !== window.top
-
-  const closeSplitPane = React.useCallback(() => {
-    if (!isSplitViewPane) return
-    window.parent.postMessage({ type: "lumen.closeSplitView" }, window.location.origin)
-  }, [isSplitViewPane])
 
   // Global state
   const githubRepo = useAtomValue(githubRepoAtom)
@@ -630,11 +622,6 @@ function NotePage() {
             >
               {parsedNote?.pinned ? <PinFillIcon16 className="text-text-pinned" /> : <PinIcon16 />}
             </IconButton>
-            {isSplitViewPane ? (
-              <IconButton aria-label="Close split view" size="small" onClick={closeSplitPane}>
-                <XIcon16 />
-              </IconButton>
-            ) : null}
             <DropdownMenu modal={false}>
               <DropdownMenu.Trigger
                 render={
@@ -823,7 +810,7 @@ function NotePage() {
               resolvedWidth === "fixed" && "mx-auto max-w-[700px]",
             )}
           >
-            {(isDailyNote || isWeeklyNote) && !isSplitViewPane ? (
+            {isDailyNote || isWeeklyNote ? (
               <div className="print-hidden flex flex-col gap-8">
                 <Calendar className="-m-2" activeNoteId={noteId ?? ""} />
                 <CalendarHeader activeNoteId={noteId ?? ""} />
@@ -905,7 +892,7 @@ function NotePage() {
                 minHeight={160}
               />
             </div>
-            {isWeeklyNote && !isSplitViewPane ? (
+            {isWeeklyNote ? (
               <Details className="print:hidden">
                 <Details.Summary>Days</Details.Summary>
                 <DaysOfWeek week={noteId ?? ""} />
@@ -940,59 +927,4 @@ function NotePage() {
       </div>
     </PageLayout>
   )
-}
-
-function useEditorValue({
-  noteId,
-  note,
-  defaultValue,
-}: {
-  noteId: NoteId
-  note: Note | undefined
-  defaultValue: string
-}) {
-  const githubRepo = useAtomValue(githubRepoAtom)
-
-  const [editorValue, _setEditorValue] = useState(() => {
-    return getNoteDraft({ githubRepo, noteId }) ?? note?.content ?? defaultValue
-  })
-
-  // Track previous note content to detect external changes
-  const [prevNoteContent, setPrevNoteContent] = useState(note?.content)
-
-  // Adjust state during render when note content changes externally (no effect needed)
-  // See: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  if (note?.content !== prevNoteContent) {
-    setPrevNoteContent(note?.content)
-    // Only update editor if there's no local draft
-    const hasDraft = getNoteDraft({ githubRepo, noteId }) !== null
-    if (!hasDraft && note?.content !== undefined) {
-      _setEditorValue(note.content)
-    }
-  }
-
-  const isDraft = useMemo(() => {
-    return editorValue !== (note ? note.content : defaultValue)
-  }, [note, editorValue, defaultValue])
-
-  const setEditorValue = useCallback(
-    (value: string) => {
-      _setEditorValue(value)
-
-      if (note ? value !== note.content : value !== defaultValue) {
-        setNoteDraft({ githubRepo, noteId, value })
-      } else {
-        clearNoteDraft({ githubRepo, noteId })
-      }
-    },
-    [note, defaultValue, githubRepo, noteId],
-  )
-
-  const discardChanges = useCallback(() => {
-    // Reset editor value to the last saved state of the note
-    _setEditorValue(note?.content ?? defaultValue)
-    clearNoteDraft({ githubRepo, noteId })
-  }, [note, defaultValue, githubRepo, noteId])
-
-  return { editorValue, setEditorValue, isDraft, discardChanges }
 }

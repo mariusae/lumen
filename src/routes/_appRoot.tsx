@@ -279,9 +279,9 @@ function RouteComponent() {
       ) : null}
       <AppLayout>
         <Outlet />
+        <CommandMenu />
       </AppLayout>
       <FloatingConversationInput />
-      <CommandMenu />
       {/* <Toaster toastOptions={{ duration: 2000 }} /> */}
       <DevBar />
     </div>

@@ -49,6 +49,7 @@ type NoteEditorProps = {
   onStateChange?: (event: ViewUpdate) => void
   onPaste?: (event: ClipboardEvent, view: EditorView) => void
   onEnter?: () => boolean
+  onNavigate?: (noteId: string) => void
   disabled?: boolean
   indentWithTab?: boolean
 }
@@ -100,6 +101,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
       onStateChange,
       onPaste,
       onEnter,
+      onNavigate,
       disabled = false,
       indentWithTab = true,
     },
@@ -179,15 +181,19 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
 
           if (openInSplitView && splitView?.openSplitView(href)) return
 
-          navigate({
-            to: "/notes/$",
-            params: { _splat: id },
-            search: {
-              mode: "read",
-              query: undefined,
-              view: "grid",
-            },
-          })
+          if (onNavigate) {
+            onNavigate(id)
+          } else {
+            navigate({
+              to: "/notes/$",
+              params: { _splat: id },
+              search: {
+                mode: "read",
+                query: undefined,
+                view: "grid",
+              },
+            })
+          }
         }),
         syntaxHighlighting(syntaxHighlighter),
       ]
@@ -201,6 +207,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
       attachFile,
       onPaste, // TODO
       onEnter,
+      onNavigate,
       vimMode,
       noteCompletion,
       tagPropertyCompletion,

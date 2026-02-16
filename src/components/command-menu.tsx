@@ -4,7 +4,7 @@ import { Command } from "cmdk"
 import copy from "copy-to-clipboard"
 import { atom, useAtom, useAtomValue } from "jotai"
 import { selectAtom, useAtomCallback } from "jotai/utils"
-import { useCallback, useMemo, useRef, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useDebounce } from "use-debounce"
 import { githubRepoAtom, notesAtom, pinnedNotesAtom, tagSearcherAtom } from "../global-state"
@@ -55,6 +55,24 @@ export function CommandMenu() {
   // Refs
   const prevActiveElement = useRef<HTMLElement>()
   const modifierKeyRef = useRef(false)
+
+  // Track modifier key state globally so it's available in onSelect callbacks.
+  // cmdk's onSelect doesn't pass the event, and onKeyDown may fire after cmdk
+  // has already processed Enter, so we listen on the window instead.
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      modifierKeyRef.current = e.metaKey || e.ctrlKey
+    }
+    const onKeyUp = () => {
+      modifierKeyRef.current = false
+    }
+    window.addEventListener("keydown", onKeyDown, true)
+    window.addEventListener("keyup", onKeyUp, true)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true)
+      window.removeEventListener("keyup", onKeyUp, true)
+    }
+  }, [])
 
   // Local state
   const [query, setQuery] = useState("")
@@ -268,9 +286,6 @@ export function CommandMenu() {
       }}
       shouldFilter={false}
       onKeyDown={(event) => {
-        // Track modifier key for split view opening on Enter
-        modifierKeyRef.current = event.metaKey || event.ctrlKey
-
         // Clear input with `esc`
         if (event.key === "Escape" && query) {
           setQuery("")

@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router"
 import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import { useAtomValue } from "jotai"
 import React from "react"
@@ -12,7 +13,7 @@ import { DraftIndicator } from "./draft-indicator"
 import { DropdownMenu } from "./dropdown-menu"
 import { IconButton } from "./icon-button"
 import { HoverCard } from "./hover-card"
-import { UndoIcon16, XIcon16 } from "./icons"
+import { MaximizeIcon16, UndoIcon16, XIcon16 } from "./icons"
 import { Markdown } from "./markdown"
 import { NoteEditor } from "./note-editor"
 import { NoteFavicon } from "./note-favicon"
@@ -25,6 +26,7 @@ type SplitNotePaneProps = {
 }
 
 export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProps) {
+  const navigate = useNavigate()
   const isSignedOut = useAtomValue(isSignedOutAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
   const note = useNoteById(noteId)
@@ -61,6 +63,15 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
   const switchToReading = React.useCallback(() => {
     setMode("read")
   }, [])
+
+  const handleMaximize = React.useCallback(() => {
+    navigate({
+      to: "/notes/$",
+      params: { _splat: noteId },
+      search: { mode, query: undefined, view: "grid" },
+    })
+    onClose()
+  }, [navigate, noteId, mode, onClose])
 
   // Intercept link clicks in markdown to navigate within the split pane
   const handleLinkClick = React.useCallback(
@@ -163,6 +174,9 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
               Edit
             </SegmentedControl.Segment>
           </SegmentedControl>
+          <IconButton aria-label="Open in main view" size="small" onClick={handleMaximize}>
+            <MaximizeIcon16 />
+          </IconButton>
           <IconButton aria-label="Close split view" size="small" onClick={onClose}>
             <XIcon16 />
           </IconButton>

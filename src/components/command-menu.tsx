@@ -14,6 +14,7 @@ import { Note } from "../schema"
 import { formatDate, formatDateDistance, toDateString } from "../utils/date"
 import { generateNoteId } from "../utils/note-id"
 import { pluralize } from "../utils/pluralize"
+import { useSplitView } from "./app-layout"
 import {
   CalendarDateIcon16,
   CopyIcon16,
@@ -49,8 +50,11 @@ export function CommandMenu() {
   const noteId = noteMatch?.params._splat
   const note = useNoteById(noteId)
 
+  const splitView = useSplitView()
+
   // Refs
   const prevActiveElement = useRef<HTMLElement>()
+  const modifierKeyRef = useRef(false)
 
   // Local state
   const [query, setQuery] = useState("")
@@ -85,6 +89,21 @@ export function CommandMenu() {
       }
     },
     [setIsOpen],
+  )
+
+  const navigateToNote = useCallback(
+    (id: string, mode: "read" | "write" = "read") => {
+      if (modifierKeyRef.current) {
+        const href = `/notes/${encodeURIComponent(id)}?mode=${mode}&view=grid`
+        if (splitView?.openSplitView(href)) return
+      }
+      navigate({
+        to: "/notes/$",
+        params: { _splat: id },
+        search: { mode, query: undefined, view: "grid" },
+      })
+    },
+    [navigate, splitView],
   )
 
   useHotkeys("mod+k", toggleMenu, {
@@ -249,6 +268,9 @@ export function CommandMenu() {
       }}
       shouldFilter={false}
       onKeyDown={(event) => {
+        // Track modifier key for split view opening on Enter
+        modifierKeyRef.current = event.metaKey || event.ctrlKey
+
         // Clear input with `esc`
         if (event.key === "Escape" && query) {
           setQuery("")
@@ -299,19 +321,7 @@ export function CommandMenu() {
                   note={note}
                   // Since they're all pinned, we don't need to show the pin icon
                   hidePinIcon
-                  onSelect={handleSelect(() =>
-                    navigate({
-                      to: "/notes/$",
-                      params: {
-                        _splat: note.id,
-                      },
-                      search: {
-                        mode: "read",
-                        query: undefined,
-                        view: "grid",
-                      },
-                    }),
-                  )}
+                  onSelect={handleSelect(() => navigateToNote(note.id))}
                 />
               ))}
             </Command.Group>
@@ -322,19 +332,7 @@ export function CommandMenu() {
                 key={dateString}
                 icon={<CalendarDateIcon16 date={new Date(dateString).getUTCDate()} />}
                 description={formatDateDistance(dateString)}
-                onSelect={handleSelect(() => {
-                  navigate({
-                    to: "/notes/$",
-                    params: {
-                      _splat: dateString,
-                    },
-                    search: {
-                      mode: "read",
-                      query: undefined,
-                      view: "grid",
-                    },
-                  })
-                })}
+                onSelect={handleSelect(() => navigateToNote(dateString))}
               >
                 {formatDate(dateString)}
               </CommandItem>
@@ -383,19 +381,7 @@ export function CommandMenu() {
                 <NoteItem
                   key={note.id}
                   note={note}
-                  onSelect={handleSelect(() =>
-                    navigate({
-                      to: "/notes/$",
-                      params: {
-                        _splat: note.id,
-                      },
-                      search: {
-                        mode: "read",
-                        query: undefined,
-                        view: "grid",
-                      },
-                    }),
-                  )}
+                  onSelect={handleSelect(() => navigateToNote(note.id))}
                 />
               ))}
               {noteResults.length > 0 ? (
@@ -428,17 +414,7 @@ export function CommandMenu() {
                   saveNote(note)
 
                   // Navigate to new note
-                  navigate({
-                    to: "/notes/$",
-                    params: {
-                      _splat: note.id,
-                    },
-                    search: {
-                      mode: "write",
-                      query: undefined,
-                      view: "grid",
-                    },
-                  })
+                  navigateToNote(note.id, "write")
                 })}
               >
                 Create new note "{deferredQuery}"

@@ -58,6 +58,7 @@ type Event =
       commitMessage?: string
     }
   | { type: "DELETE_FILE"; filepath: string }
+  | { type: "RELOAD_MARKDOWN_FILES" }
 
 function createGlobalStateMachine() {
   return createMachine(
@@ -172,6 +173,9 @@ function createGlobalStateMachine() {
               entry: "logUser",
               on: {
                 SELECT_REPO: "cloningRepo",
+                RELOAD_MARKDOWN_FILES: {
+                  actions: "reloadMarkdownFilesFromLocalStorage",
+                },
               },
               type: "parallel",
               states: {
@@ -544,6 +548,9 @@ function createGlobalStateMachine() {
         clearMarkdownFilesLocalStorage: () => {
           localStorage.removeItem(MARKDOWN_FILES_STORAGE_KEY)
         },
+        reloadMarkdownFilesFromLocalStorage: assign({
+          markdownFiles: () => getMarkdownFilesFromLocalStorage() ?? {},
+        }),
         setError: assign({
           // TODO: Remove `as Error`
           error: (_, event) => event.data as Error,

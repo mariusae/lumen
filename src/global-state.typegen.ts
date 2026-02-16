@@ -51,6 +51,7 @@
 "logUser": "done.invoke.global.signedIn.cloningRepo:invocation[0]" | "done.invoke.global.signedIn.resolvingRepo:invocation[0]";
 "mergeMarkdownFiles": "WRITE_FILES";
 "mergeMarkdownFilesLocalStorage": "WRITE_FILES";
+"reloadMarkdownFilesFromLocalStorage": "RELOAD_MARKDOWN_FILES";
 "setError": "error.platform.global.signedIn.cloned.change.deletingFile:invocation[0]" | "error.platform.global.signedIn.cloned.change.writingFiles:invocation[0]" | "error.platform.global.signedIn.cloningRepo:invocation[0]";
 "setGitHubRepo": "SELECT_REPO" | "done.invoke.global.signedIn.resolvingRepo:invocation[0]";
 "setGitHubUser": "SIGN_IN" | "done.invoke.global.resolvingUser:invocation[0]";

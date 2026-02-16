@@ -1,9 +1,9 @@
-import { useAtom, useAtomValue } from "jotai"
+import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import React from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
 import { useMedia } from "react-use"
-import { isHelpPanelOpenAtom, sidebarAtom } from "../global-state"
+import { globalStateMachineAtom, isHelpPanelOpenAtom, sidebarAtom } from "../global-state"
 import { cx } from "../utils/cx"
 import { HelpDrawer, HelpSidebar } from "./help-panel"
 import { NavBar } from "./nav-bar"
@@ -29,6 +29,7 @@ export function useSplitView() {
 export function AppLayout({ className, children }: AppLayoutProps) {
   const sidebar = useAtomValue(sidebarAtom)
   const [isHelpPanelOpen, setHelpPanel] = useAtom(isHelpPanelOpenAtom)
+  const sendToGlobalStateMachine = useSetAtom(globalStateMachineAtom)
   const isWideViewport = useMedia("(min-width: 1024px)")
   const showHelpSidebar = isHelpPanelOpen && isWideViewport
   const isEmbeddedFrame = window.self !== window.top
@@ -86,13 +87,18 @@ export function AppLayout({ className, children }: AppLayoutProps) {
   React.useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return
-      if (event.data?.type !== "lumen.closeSplitView") return
-      closeSplitView()
+
+      if (event.data?.type === "lumen.closeSplitView") {
+        closeSplitView()
+      } else if (event.data?.type === "lumen.noteSaved") {
+        // Reload markdown files from localStorage (already updated by the iframe)
+        sendToGlobalStateMachine({ type: "RELOAD_MARKDOWN_FILES" })
+      }
     }
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-  }, [closeSplitView])
+  }, [closeSplitView, sendToGlobalStateMachine])
 
   const handleModifierClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {

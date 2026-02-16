@@ -217,11 +217,16 @@ function NotePage() {
       // Only save if the content has changed
       if (value !== note?.content) {
         saveNote({ id: noteId, content: value })
+
+        // Notify parent window so it can update its state
+        if (isSplitViewPane) {
+          window.parent.postMessage({ type: "lumen.noteSaved" }, window.location.origin)
+        }
       }
 
       clearNoteDraft({ githubRepo, noteId })
     },
-    [isSignedOut, noteId, note, saveNote, githubRepo],
+    [isSignedOut, noteId, note, saveNote, githubRepo, isSplitViewPane],
   )
 
   const updateWidth = React.useCallback(

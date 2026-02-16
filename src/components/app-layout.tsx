@@ -183,7 +183,7 @@ export function AppLayout({ className, children }: AppLayoutProps) {
                         ref={separatorRef}
                         role="separator"
                         aria-orientation="vertical"
-                        className="relative hidden w-px shrink-0 bg-border-secondary print:hidden lg:block"
+                        className="relative hidden w-px shrink-0 print:hidden lg:block"
                       >
                         <button
                           type="button"
@@ -194,7 +194,7 @@ export function AppLayout({ className, children }: AppLayoutProps) {
                       </div>
                       <div
                         ref={splitPaneRef}
-                        className="relative hidden min-h-0 min-w-0 shrink-0 print:hidden lg:block"
+                        className="relative hidden min-h-0 min-w-0 shrink-0 shadow-[-6px_0_16px_-8px_rgba(0,0,0,0.12)] print:hidden lg:block"
                         style={{ width: `${splitViewWidth}%` }}
                       >
                         <SplitNotePane

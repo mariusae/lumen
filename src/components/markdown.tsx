@@ -434,8 +434,23 @@ function Frontmatter({
 
 const anchorUrlSchema = z.union([z.string().url(), z.tuple([z.string().url()])])
 
+function isChildrenEmpty(children: React.ReactNode): boolean {
+  if (children == null) return true
+  if (typeof children === "string") return children.trim() === ""
+  if (Array.isArray(children))
+    return (
+      children.length === 0 || children.every((child) => isChildrenEmpty(child as React.ReactNode))
+    )
+  return false
+}
+
 function Anchor(props: React.ComponentPropsWithoutRef<"a">) {
   const ref = React.useRef<HTMLAnchorElement>(null)
+
+  // Render links with no text content as OG cards, e.g. [](https://example.com)
+  if (props.href?.startsWith("http") && isChildrenEmpty(props.children)) {
+    return <OpenGraphCard url={props.href} />
+  }
 
   // Render footnote references with a preview hover card
   if (props.href?.startsWith("#user-content-fn-")) {

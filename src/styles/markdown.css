@@ -150,6 +150,7 @@
 }
 
 .markdown mark {
+  color: inherit;
   background-color: var(--color-bg-highlight);
   border-radius: var(--border-radius-sm);
   padding-inline: 0.125em;

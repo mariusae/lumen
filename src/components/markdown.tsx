@@ -69,6 +69,7 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
+import { OpenGraphCard } from "./og-card"
 import { getImdbId } from "../utils/imdb"
 
 export type MarkdownProps = {
@@ -241,9 +242,7 @@ export const Markdown = React.memo(
               ) : null}
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-5 empty:hidden">
-                  {showFavicon && url ? (
-                    <WebsiteFavicon url={url} size={32} className="align-baseline" />
-                  ) : null}
+                  {showFavicon && url ? <OpenGraphCard url={url} /> : null}
                   {title ? (
                     <MarkdownContent className="[&_h1]:[text-box-trim:trim-start]">
                       {title}

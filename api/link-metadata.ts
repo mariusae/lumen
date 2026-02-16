@@ -1,5 +1,5 @@
 /**
- * Fetches a URL and extracts the page title.
+ * Fetches a URL and extracts the page title and Open Graph metadata.
  * The URL should be provided as a query parameter, e.g. /link-metadata?url=https://example.com
  */
 async function handler(request: Request): Promise<Response> {
@@ -31,20 +31,20 @@ async function handler(request: Request): Promise<Response> {
       })
     }
 
-    // Read only the first chunk of the response to find the title
+    // Read only the first chunk of the response to find metadata
     // This avoids downloading the entire page
     const reader = response.body?.getReader()
     const decoder = new TextDecoder()
     let html = ""
-    const maxBytes = 50_000 // Read up to 50KB, enough to find <title>
+    const maxBytes = 50_000 // Read up to 50KB, enough to find <head> metadata
 
     if (reader) {
       while (html.length < maxBytes) {
         const { done, value } = await reader.read()
         if (done) break
         html += decoder.decode(value, { stream: true })
-        // Stop early if we've found the closing </title> tag
-        if (/<\/title>/i.test(html)) break
+        // Stop early if we've found the closing </head> tag
+        if (/<\/head>/i.test(html)) break
       }
       reader.cancel()
     }
@@ -52,13 +52,31 @@ async function handler(request: Request): Promise<Response> {
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
     const title = titleMatch ? decodeHtmlEntities(titleMatch[1].trim()) : null
 
-    return new Response(JSON.stringify({ title }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=86400",
-        "Access-Control-Allow-Origin": "*",
+    // Extract Open Graph metadata
+    const ogTitle = extractMetaContent(html, "og:title")
+    const ogDescription =
+      extractMetaContent(html, "og:description") ?? extractMetaContent(html, "description")
+    const ogImage = extractMetaContent(html, "og:image")
+    const ogSiteName = extractMetaContent(html, "og:site_name")
+
+    return new Response(
+      JSON.stringify({
+        title,
+        og: {
+          title: ogTitle,
+          description: ogDescription,
+          image: ogImage,
+          siteName: ogSiteName,
+        },
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=86400",
+          "Access-Control-Allow-Origin": "*",
+        },
       },
-    })
+    )
   } catch (error) {
     console.error(error)
     const message = error instanceof Error ? error.message : "Unknown error"
@@ -79,6 +97,35 @@ function getRequestUrl(request: Request): URL {
     const proto = request.headers.get("x-forwarded-proto") ?? "http"
     return new URL(request.url, `${proto}://${host}`)
   }
+}
+
+/**
+ * Extracts the content attribute from a meta tag by property or name.
+ * Handles both `property="og:..."` and `name="description"` patterns.
+ */
+function extractMetaContent(html: string, property: string): string | null {
+  // Match <meta property="..." content="..."> or <meta name="..." content="...">
+  // Also handle reversed attribute order: <meta content="..." property="...">
+  const escapedProp = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const patterns = [
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${escapedProp}["'][^>]+content=["']([^"']*?)["']`,
+      "i",
+    ),
+    new RegExp(
+      `<meta[^>]+content=["']([^"']*?)["'][^>]+(?:property|name)=["']${escapedProp}["']`,
+      "i",
+    ),
+  ]
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern)
+    if (match) {
+      return decodeHtmlEntities(match[1].trim()) || null
+    }
+  }
+
+  return null
 }
 
 function decodeHtmlEntities(text: string): string {

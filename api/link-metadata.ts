@@ -56,7 +56,9 @@ async function handler(request: Request): Promise<Response> {
     const ogTitle = extractMetaContent(html, "og:title")
     const ogDescription =
       extractMetaContent(html, "og:description") ?? extractMetaContent(html, "description")
-    const ogImage = extractMetaContent(html, "og:image")
+    const ogImageRaw = extractMetaContent(html, "og:image")
+    // Resolve relative og:image URLs against the target URL
+    const ogImage = ogImageRaw ? resolveUrl(ogImageRaw, targetUrl) : null
     const ogSiteName = extractMetaContent(html, "og:site_name")
 
     return new Response(
@@ -96,6 +98,18 @@ function getRequestUrl(request: Request): URL {
     const host = request.headers.get("host") ?? "localhost"
     const proto = request.headers.get("x-forwarded-proto") ?? "http"
     return new URL(request.url, `${proto}://${host}`)
+  }
+}
+
+/**
+ * Resolves a potentially relative URL against a base URL.
+ * Returns the original string if it's already absolute or if resolution fails.
+ */
+function resolveUrl(url: string, base: string): string {
+  try {
+    return new URL(url, base).href
+  } catch {
+    return url
   }
 }
 

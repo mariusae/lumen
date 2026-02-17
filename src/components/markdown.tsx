@@ -25,6 +25,7 @@ import {
 } from "../utils/reorder-list-item"
 import { remarkEmbed } from "../remark-plugins/embed"
 import { remarkHighlight } from "../remark-plugins/highlight"
+import { remarkLinkCard } from "../remark-plugins/link-card"
 import { remarkPriority } from "../remark-plugins/priority"
 import { remarkTag } from "../remark-plugins/tag"
 import { remarkWikilink } from "../remark-plugins/wikilink"
@@ -308,6 +309,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         // remarkEmoji,
         remarkWikilink,
         remarkEmbed,
+        remarkLinkCard,
         remarkTag,
         remarkPriority,
         remarkHighlight,
@@ -344,6 +346,12 @@ export function MarkdownContent({ children, className }: { children: string; cla
               level: node.data.level,
             })
           },
+          linkCard(h, node) {
+            return h(node, "linkCard", {
+              title: node.data.title,
+              url: node.data.url,
+            })
+          },
         },
       }}
       components={{
@@ -361,6 +369,8 @@ export function MarkdownContent({ children, className }: { children: string; cla
         tag: TagLink,
         // @ts-ignore
         priority: PriorityIndicator,
+        // @ts-ignore
+        linkCard: LinkCardComponent,
       }}
     >
       {children}
@@ -546,9 +556,15 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
     )
   }
 
-  // Render external URLs as OG cards, e.g. ![title](https://example.com)
+  // Proxy external images
   if (props.src?.startsWith("http")) {
-    return <OpenGraphCard url={props.src} fallbackTitle={props.alt || undefined} />
+    const proxyUrl = `/file-proxy?url=${encodeURIComponent(props.src)}`
+    return (
+      <a href={props.src} target="_blank" rel="noopener noreferrer">
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <img {...props} src={proxyUrl} data-canonical-src={props.src} />
+      </a>
+    )
   }
 
   // eslint-disable-next-line jsx-a11y/alt-text
@@ -987,4 +1003,8 @@ function NoteEmbed({ id }: NoteEmbedProps) {
       </div>
     </div>
   )
+}
+
+function LinkCardComponent({ title, url }: { title: string; url: string }) {
+  return <OpenGraphCard url={url} fallbackTitle={title || undefined} />
 }

@@ -434,23 +434,8 @@ function Frontmatter({
 
 const anchorUrlSchema = z.union([z.string().url(), z.tuple([z.string().url()])])
 
-function isChildrenEmpty(children: React.ReactNode): boolean {
-  if (children == null) return true
-  if (typeof children === "string") return children.trim() === ""
-  if (Array.isArray(children))
-    return (
-      children.length === 0 || children.every((child) => isChildrenEmpty(child as React.ReactNode))
-    )
-  return false
-}
-
 function Anchor(props: React.ComponentPropsWithoutRef<"a">) {
   const ref = React.useRef<HTMLAnchorElement>(null)
-
-  // Render links with no text content as OG cards, e.g. [](https://example.com)
-  if (props.href?.startsWith("http") && isChildrenEmpty(props.children)) {
-    return <OpenGraphCard url={props.href} />
-  }
 
   // Render footnote references with a preview hover card
   if (props.href?.startsWith("#user-content-fn-")) {
@@ -561,15 +546,9 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
     )
   }
 
-  // Proxy external images
+  // Render external URLs as OG cards, e.g. ![title](https://example.com)
   if (props.src?.startsWith("http")) {
-    const proxyUrl = `/file-proxy?url=${encodeURIComponent(props.src)}`
-    return (
-      <a href={props.src} target="_blank" rel="noopener noreferrer">
-        {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <img {...props} src={proxyUrl} data-canonical-src={props.src} />
-      </a>
-    )
+    return <OpenGraphCard url={props.src} fallbackTitle={props.alt || undefined} />
   }
 
   // eslint-disable-next-line jsx-a11y/alt-text

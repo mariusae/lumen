@@ -35,19 +35,40 @@ function useOgMetadata(url: string) {
   return data
 }
 
-export function OpenGraphCard({ url, className }: { url: string; className?: string }) {
+export function OpenGraphCard({
+  url,
+  fallbackTitle,
+  className,
+}: {
+  url: string
+  fallbackTitle?: string
+  className?: string
+}) {
   const og = useOgMetadata(url)
-
-  // Don't render anything if there's no OG data, or if there's no meaningful content
-  if (!og || (!og.title && !og.description && !og.image)) {
-    return null
-  }
 
   let hostname: string
   try {
     hostname = new URL(url).hostname.replace(/^www\./, "")
   } catch {
     hostname = url
+  }
+
+  // Show fallback while loading or if OG data has no meaningful content
+  if (!og || (!og.title && !og.description && !og.image)) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cx(
+          "flex items-center gap-2 overflow-hidden rounded-lg border border-border bg-bg-card p-3 no-underline!",
+          className,
+        )}
+      >
+        <WebsiteFavicon url={url} size={16} />
+        <span className="truncate text-sm text-text-primary">{fallbackTitle || hostname}</span>
+      </a>
+    )
   }
 
   const hasImage = !!og.image

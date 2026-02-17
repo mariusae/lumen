@@ -347,7 +347,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
             })
           },
           linkCard(h, node) {
-            return h(node, "linkCard", {
+            return h(node, "linkcard", {
               title: node.data.title,
               url: node.data.url,
             })
@@ -370,7 +370,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         // @ts-ignore
         priority: PriorityIndicator,
         // @ts-ignore
-        linkCard: LinkCardComponent,
+        linkcard: LinkCardComponent,
       }}
     >
       {children}

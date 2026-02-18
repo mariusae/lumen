@@ -20,6 +20,7 @@ import {
   tagsAtom,
   templatesAtom,
 } from "../global-state"
+import { useRemoteSyncPoller } from "../hooks/remote-sync-poller"
 import { useSearchNotes } from "../hooks/search-notes"
 import { useValueRef } from "../hooks/value-ref"
 import { generateNoteId } from "../utils/note-id"
@@ -63,6 +64,9 @@ function RouteComponent() {
   useEvent("online", () => {
     send("SYNC")
   })
+
+  // Poll GitHub API to detect remote pushes
+  useRemoteSyncPoller()
 
   // Notify voice assistant when the route changes
   React.useEffect(() => {

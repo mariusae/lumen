@@ -5,7 +5,7 @@ import { fs, fsWipe } from "./fs"
 import { startTimer } from "./timer"
 
 export const REPO_DIR = "/repo"
-const DEFAULT_BRANCH = "main"
+export const DEFAULT_BRANCH = "main"
 
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {

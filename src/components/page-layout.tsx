@@ -1,4 +1,5 @@
 import { useAtomValue } from "jotai"
+import React from "react"
 import { useNetworkState } from "react-use"
 import { LoadingIcon16 } from "../components/icons"
 import { RepoForm } from "../components/repo-form"
@@ -20,6 +21,7 @@ type PageLayoutProps = PageHeaderProps & {
   className?: string
   disableGuard?: boolean
   floatingActions?: React.ReactNode
+  scrollRef?: React.Ref<HTMLElement>
   children?: React.ReactNode
 }
 
@@ -28,6 +30,7 @@ export function PageLayout({
   disableGuard = false,
   actions,
   floatingActions,
+  scrollRef,
   children,
   ...props
 }: PageLayoutProps) {
@@ -49,7 +52,10 @@ export function PageLayout({
           className="print:hidden"
         />
         <div className="relative grid overflow-hidden">
-          <main className="relative isolate overflow-auto [scrollbar-gutter:stable] scroll-mask">
+          <main
+            ref={scrollRef}
+            className="relative isolate overflow-auto [scrollbar-gutter:stable] scroll-mask"
+          >
             {isRepoNotCloned && !disableGuard ? (
               <div className="flex h-full flex-col items-center">
                 <div className="mx-auto w-full max-w-lg p-4 pb-8 md:pb-14">

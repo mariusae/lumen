@@ -102,11 +102,11 @@ function buildDecorations(state: EditorState): DecorationSet {
       fontSize = "var(--font-size-lg)"
     }
 
-    // Line decoration for heading styling + padding for the fold toggle
+    // Line decoration for heading styling
     decorations.push(
       Decoration.line({
         attributes: {
-          style: `font-weight: var(--font-weight-bold); padding-left: 24px;${fontSize ? ` font-size: ${fontSize};` : ""}`,
+          style: `font-weight: var(--font-weight-bold);${fontSize ? ` font-size: ${fontSize};` : ""}`,
           "data-heading-level": String(heading.level),
           ...(heading.folded ? { "data-heading-folded": "true" } : {}),
         },
@@ -152,29 +152,27 @@ const headingField = StateField.define<DecorationSet>({
 })
 
 const headingFoldStyle = EditorView.baseTheme({
-  // Heading lines need relative positioning so the toggle can be placed inside the padding
-  ".cm-line[data-heading-level]": {
-    position: "relative",
-  },
+  // The toggle is a zero-width inline element that overflows left into the
+  // parent container's padding (the note page applies p-5 / p-10).
   ".cm-heading-fold-toggle": {
-    position: "absolute",
-    left: "0",
-    top: "50%",
-    transform: "translateY(-50%)",
-    display: "grid",
-    placeItems: "center",
-    width: "20px",
-    height: "20px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "0",
+    overflow: "visible",
+    verticalAlign: "middle",
     border: "none",
     background: "none",
     padding: "0",
-    borderRadius: "var(--border-radius-sm, 3px)",
+    cursor: "pointer",
     color: "var(--color-text-tertiary, #999)",
     opacity: "0",
-    cursor: "pointer",
     transition: "opacity 0.15s, color 0.15s",
   },
   ".cm-heading-fold-toggle svg": {
+    // Pull the 16px icon left so it sits in the parent's padding area
+    marginLeft: "-24px",
+    marginRight: "8px",
     transition: "transform 0.15s",
     transform: "rotate(90deg)",
   },

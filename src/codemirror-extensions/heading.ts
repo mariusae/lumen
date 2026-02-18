@@ -102,18 +102,18 @@ function buildDecorations(state: EditorState): DecorationSet {
       fontSize = "var(--font-size-lg)"
     }
 
-    // Line decoration for heading styling
+    // Line decoration for heading styling + padding for the fold toggle
     decorations.push(
       Decoration.line({
         attributes: {
-          style: `font-weight: var(--font-weight-bold);${fontSize ? ` font-size: ${fontSize};` : ""}`,
+          style: `font-weight: var(--font-weight-bold); padding-left: 24px;${fontSize ? ` font-size: ${fontSize};` : ""}`,
           "data-heading-level": String(heading.level),
           ...(heading.folded ? { "data-heading-folded": "true" } : {}),
         },
       }).range(heading.line.from),
     )
 
-    // Fold toggle widget — inline at the start of the line
+    // Fold toggle widget at the start of the heading line
     decorations.push(
       Decoration.widget({
         widget: new FoldToggleWidget(heading.folded, heading.line.from),
@@ -152,15 +152,19 @@ const headingField = StateField.define<DecorationSet>({
 })
 
 const headingFoldStyle = EditorView.baseTheme({
+  // Heading lines need relative positioning so the toggle can be placed inside the padding
+  ".cm-line[data-heading-level]": {
+    position: "relative",
+  },
   ".cm-heading-fold-toggle": {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
+    position: "absolute",
+    left: "0",
+    top: "50%",
+    transform: "translateY(-50%)",
+    display: "grid",
+    placeItems: "center",
     width: "20px",
     height: "20px",
-    marginLeft: "-24px",
-    marginRight: "4px",
-    verticalAlign: "middle",
     border: "none",
     background: "none",
     padding: "0",
@@ -181,7 +185,7 @@ const headingFoldStyle = EditorView.baseTheme({
     opacity: "1",
     color: "var(--color-text-secondary, #666)",
   },
-  ".cm-line:hover .cm-heading-fold-toggle": {
+  ".cm-line[data-heading-level]:hover .cm-heading-fold-toggle": {
     opacity: "1",
   },
   ".cm-heading-fold-toggle:hover": {

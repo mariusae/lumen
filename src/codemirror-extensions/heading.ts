@@ -193,10 +193,16 @@ const autoUnfold = EditorView.updateListener.of((update) => {
     if (tr.annotation(foldToggle)) return
   }
 
-  // Check if any change touched a folded heading line — if so, unfold it.
+  // Only auto-unfold headings that were already folded before this edit.
+  // This avoids stripping a fold comment the user just typed.
   const changes: { from: number; to: number; insert: string }[] = []
 
-  update.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+  update.changes.iterChangedRanges((fromA, _toA, fromB, toB) => {
+    // Check whether the line in the old doc was already a folded heading
+    const oldLine = update.startState.doc.lineAt(Math.min(fromA, update.startState.doc.length))
+    if (!/^#{1,6}\s/.test(oldLine.text) || !FOLD_COMMENT_RE.test(oldLine.text)) return
+
+    // It was already folded — unfold the corresponding line(s) in the new doc
     const state = update.state
     const startLine = state.doc.lineAt(fromB)
     const endLine = state.doc.lineAt(Math.min(toB, state.doc.length))

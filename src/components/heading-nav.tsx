@@ -98,9 +98,9 @@ type HeadingDropdownProps = {
 }
 
 function HeadingDropdown({ heading, allHeadings, onSelect }: HeadingDropdownProps) {
-  // Show siblings: headings at the same level that share the same parent
-  const siblings = React.useMemo(() => {
-    return getSiblings(allHeadings, heading)
+  // Show all headings within the parent's scope so the user can navigate to any subheading
+  const { items, baseLevel } = React.useMemo(() => {
+    return getDescendants(allHeadings, heading)
   }, [allHeadings, heading])
 
   return (
@@ -118,14 +118,15 @@ function HeadingDropdown({ heading, allHeadings, onSelect }: HeadingDropdownProp
             style={{ width: 280 }}
           >
             <div className="grid max-h-[60svh] scroll-py-1 overflow-auto p-1">
-              {siblings.map((h) => (
+              {items.map((h) => (
                 <Menu.Item
                   key={h.index}
                   className={cx(
-                    "flex h-8 cursor-pointer select-none items-center gap-2 truncate rounded px-3 outline-hidden focus:bg-bg-hover focus:outline-hidden active:bg-bg-active coarse:h-10",
+                    "flex h-8 cursor-pointer select-none items-center truncate rounded outline-hidden focus:bg-bg-hover focus:outline-hidden active:bg-bg-active coarse:h-10",
                     h.index === heading.index && "font-medium text-text",
                     h.index !== heading.index && "text-text-secondary",
                   )}
+                  style={{ paddingLeft: `${(h.level - baseLevel) * 12 + 12}px`, paddingRight: 12 }}
                   onClick={() => onSelect(h)}
                 >
                   <span className="truncate">{h.text}</span>
@@ -139,13 +140,21 @@ function HeadingDropdown({ heading, allHeadings, onSelect }: HeadingDropdownProp
   )
 }
 
-/** Get sibling headings (same level under the same parent). */
-function getSiblings(headings: Heading[], target: Heading): Heading[] {
+/**
+ * Get all headings within the parent's scope.
+ *
+ * For a given heading, find its parent (the nearest heading with a lower level),
+ * then return all headings from that parent's start to the end of its scope.
+ * This lets the user navigate to any sibling or subheading within that section.
+ */
+function getDescendants(
+  headings: Heading[],
+  target: Heading,
+): { items: Heading[]; baseLevel: number } {
   const targetIdx = headings.findIndex((h) => h.index === target.index)
-  if (targetIdx === -1) return [target]
+  if (targetIdx === -1) return { items: [target], baseLevel: target.level }
 
   const level = target.level
-  const siblings: Heading[] = []
 
   // Find the parent (first heading with lower level before target)
   let parentIdx = -1
@@ -156,14 +165,13 @@ function getSiblings(headings: Heading[], target: Heading): Heading[] {
     }
   }
 
-  // Collect all headings at the same level between the parent and the next parent-level heading
+  // Collect all headings from parent's scope start to its end
   const startIdx = parentIdx + 1
+  const items: Heading[] = []
   for (let i = startIdx; i < headings.length; i++) {
     if (headings[i].level < level) break
-    if (headings[i].level === level) {
-      siblings.push(headings[i])
-    }
+    items.push(headings[i])
   }
 
-  return siblings.length > 0 ? siblings : [target]
+  return { items: items.length > 0 ? items : [target], baseLevel: level }
 }

@@ -18,6 +18,7 @@ import { DaysOfWeek } from "../components/days-of-week"
 import { Details } from "../components/details"
 import { DraftIndicator } from "../components/draft-indicator"
 import { DropdownMenu } from "../components/dropdown-menu"
+import { HeadingNav } from "../components/heading-nav"
 import { IconButton } from "../components/icon-button"
 import {
   CopyIcon16,
@@ -57,6 +58,7 @@ import {
   vimModeAtom,
   weeklyTemplateAtom,
 } from "../global-state"
+import { useActiveHeading } from "../hooks/active-heading"
 import { useAttachFile } from "../hooks/attach-file"
 import { useEditorValue } from "../hooks/editor-value"
 import { useDeleteNote, useNoteById, useRenameNote, useSaveNote } from "../hooks/note"
@@ -147,6 +149,12 @@ function NotePage() {
     return new Map<NoteId, Note>(notes.map((note) => [note.id, note]))
   }, [noteId, searchNotes])
 
+  // Scroll container for heading navigation
+  const [scrollContainer, setScrollContainer] = React.useState<HTMLElement | null>(null)
+  const scrollRef = React.useCallback((node: HTMLElement | null) => {
+    setScrollContainer(node)
+  }, [])
+
   // Editor state
   const editorRef = React.useRef<ReactCodeMirrorRef>(null)
   const { editorValue, setEditorValue, isDraft, discardChanges } = useEditorValue({
@@ -166,6 +174,13 @@ function NotePage() {
     [noteId, editorValue],
   )
   const [isDraggingFile, setIsDraggingFile] = React.useState(false)
+
+  // Heading navigation
+  const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
+    scrollContainer,
+    editorValue,
+    mode,
+  )
 
   // Resolve font (frontmatter font or default)
   const frontmatterFont = parsedNote?.frontmatter?.font
@@ -508,9 +523,19 @@ function NotePage() {
 
   return (
     <PageLayout
+      scrollRef={scrollRef}
       title={
-        <div className="flex items-center gap-1">
-          <span className="truncate">{noteId}.md</span>
+        <div className="flex min-w-0 items-center gap-1">
+          {headings.length > 0 && activeHeadingIndex >= 0 ? (
+            <HeadingNav
+              noteId={`${noteId}.md`}
+              headings={headings}
+              activeHeadingIndex={activeHeadingIndex}
+              onSelectHeading={scrollToHeading}
+            />
+          ) : (
+            <span className="truncate">{noteId}.md</span>
+          )}
           {isDraft ? (
             <DropdownMenu modal={false}>
               <DropdownMenu.Trigger

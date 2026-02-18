@@ -3,6 +3,7 @@ import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import { useAtomValue } from "jotai"
 import React from "react"
 import { githubRepoAtom, isSignedOutAtom } from "../global-state"
+import { useActiveHeading } from "../hooks/active-heading"
 import { useEditorValue } from "../hooks/editor-value"
 import { useNoteById, useSaveNote } from "../hooks/note"
 import { NoteId } from "../schema"
@@ -11,6 +12,7 @@ import { parseNote } from "../utils/parse-note"
 import { Button } from "./button"
 import { DraftIndicator } from "./draft-indicator"
 import { DropdownMenu } from "./dropdown-menu"
+import { HeadingNav } from "./heading-nav"
 import { IconButton } from "./icon-button"
 import { HoverCard } from "./hover-card"
 import { MaximizeIcon16, UndoIcon16, XIcon16 } from "./icons"
@@ -41,7 +43,15 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
 
   const [mode, setMode] = React.useState<"read" | "write">("read")
 
+  const [scrollContainer, setScrollContainer] = React.useState<HTMLDivElement | null>(null)
+
   const parsedNote = React.useMemo(() => parseNote(noteId, editorValue), [noteId, editorValue])
+
+  const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
+    scrollContainer,
+    editorValue,
+    mode,
+  )
 
   const handleSave = React.useCallback(
     (value: string) => {
@@ -130,7 +140,18 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
             <span className="shrink-0 text-text-secondary">
               <NoteFavicon note={parsedNote} />
             </span>
-            <span className="truncate text-sm font-medium">{noteId}.md</span>
+            <span className="truncate text-sm font-medium">
+              {headings.length > 0 && activeHeadingIndex >= 0 ? (
+                <HeadingNav
+                  noteId={`${noteId}.md`}
+                  headings={headings}
+                  activeHeadingIndex={activeHeadingIndex}
+                  onSelectHeading={scrollToHeading}
+                />
+              ) : (
+                <>{noteId}.md</>
+              )}
+            </span>
             {isDraft ? (
               <DropdownMenu modal={false}>
                 <DropdownMenu.Trigger
@@ -183,7 +204,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
         </div>
 
         {/* Content */}
-        <div className="@container min-h-0 flex-1 overflow-auto">
+        <div ref={setScrollContainer} className="@container min-h-0 flex-1 overflow-auto">
           <div className="p-5 @[640px]:p-10">
             <div className="mx-auto flex max-w-[700px] flex-col gap-8">
               {mode === "read" && (

@@ -30,7 +30,7 @@ export function extractHeadings(markdown: string): Heading[] {
     if (match) {
       headings.push({
         level: match[1].length,
-        text: match[2].replace(/\s+$/, ""),
+        text: match[2].replace(/\s*<!--\s*folded\s*-->/, "").replace(/\s+$/, ""),
         index: headingIndex,
       })
       headingIndex++

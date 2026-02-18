@@ -51,6 +51,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
     scrollContainer,
     editorValue,
     mode,
+    parsedNote?.displayName,
   )
 
   const handleSave = React.useCallback(
@@ -211,6 +212,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
                 // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
                 <div
                   className="min-h-[240px]"
+                  data-note-content
                   onClick={handleLinkClick}
                   onMouseDown={(event) => {
                     // Double click to edit

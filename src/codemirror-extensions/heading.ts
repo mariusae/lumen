@@ -8,7 +8,6 @@ class FoldToggleWidget extends WidgetType {
   constructor(
     private folded: boolean,
     private headingFrom: number,
-    private headingTo: number,
   ) {
     super()
   }
@@ -18,27 +17,28 @@ class FoldToggleWidget extends WidgetType {
   }
 
   toDOM(view: EditorView) {
-    const button = document.createElement("button")
+    const button = document.createElement("span")
     button.className = "cm-heading-fold-toggle"
+    button.setAttribute("role", "button")
     button.setAttribute("aria-label", this.folded ? "Unfold section" : "Fold section")
     if (this.folded) button.setAttribute("data-folded", "true")
     button.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L11 8L6 12.5V3.5Z"/></svg>`
 
+    const headingFrom = this.headingFrom
     button.addEventListener("mousedown", (e) => {
       e.preventDefault()
       e.stopPropagation()
 
-      const line = view.state.doc.lineAt(this.headingFrom)
+      const state = view.state
+      const line = state.doc.lineAt(headingFrom)
       const lineText = line.text
 
       if (FOLD_COMMENT_RE.test(lineText)) {
-        // Unfold: remove the comment
         const newText = lineText.replace(FOLD_COMMENT_RE, "")
         view.dispatch({
           changes: { from: line.from, to: line.to, insert: newText },
         })
       } else {
-        // Fold: add the comment
         view.dispatch({
           changes: { from: line.to, insert: ` ${FOLD_COMMENT}` },
         })
@@ -49,7 +49,7 @@ class FoldToggleWidget extends WidgetType {
   }
 
   ignoreEvent() {
-    return true
+    return false
   }
 }
 
@@ -83,12 +83,10 @@ function findFoldEnd(state: EditorState, headingLine: Line, level: number): numb
     const line = state.doc.line(lineNum)
     const match = line.text.match(/^(#{1,6})\s/)
     if (match && match[1].length <= level) {
-      // Return position just before this line (end of previous line)
       return line.from - 1
     }
     lineNum++
   }
-  // Fold to end of document
   return state.doc.length
 }
 
@@ -115,15 +113,15 @@ function buildDecorations(state: EditorState): DecorationSet {
       }).range(heading.line.from),
     )
 
-    // Fold toggle widget at the start of the heading line
+    // Fold toggle widget — inline at the start of the line
     decorations.push(
       Decoration.widget({
-        widget: new FoldToggleWidget(heading.folded, heading.line.from, heading.line.to),
+        widget: new FoldToggleWidget(heading.folded, heading.line.from),
         side: -1,
       }).range(heading.line.from),
     )
 
-    // If folded, hide the content between this heading and the next same-or-higher-level heading
+    // If folded, hide everything from end of heading line to next same-or-higher-level heading
     if (heading.folded) {
       const foldEnd = findFoldEnd(state, heading.line, heading.level)
       if (foldEnd > heading.line.to) {
@@ -155,14 +153,14 @@ const headingField = StateField.define<DecorationSet>({
 
 const headingFoldStyle = EditorView.baseTheme({
   ".cm-heading-fold-toggle": {
-    position: "absolute",
-    left: "-24px",
-    top: "50%",
-    transform: "translateY(-50%)",
-    display: "grid",
-    placeItems: "center",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
     width: "20px",
     height: "20px",
+    marginLeft: "-24px",
+    marginRight: "4px",
+    verticalAlign: "middle",
     border: "none",
     background: "none",
     padding: "0",
@@ -188,10 +186,6 @@ const headingFoldStyle = EditorView.baseTheme({
   },
   ".cm-heading-fold-toggle:hover": {
     color: "var(--color-text, #333)",
-  },
-  // Ensure heading lines have relative positioning for the toggle
-  ".cm-line[data-heading-level]": {
-    position: "relative",
   },
 })
 

@@ -179,53 +179,29 @@
   margin-block: calc(var(--font-size-base) * 1.25);
 }
 
-/* Heading fold toggle */
-.markdown .heading-fold-toggle {
-  position: absolute;
-  left: -24px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--border-radius-sm);
+/* Heading fold ellipsis pill */
+.markdown .heading-fold-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 0.5em;
+  padding: 0 0.5em;
+  height: 1.4em;
+  border: none;
+  border-radius: 999px;
+  background-color: var(--color-bg-secondary);
   color: var(--color-text-tertiary);
-  opacity: 0;
+  font-size: 0.7em;
+  line-height: 1;
+  letter-spacing: 0.1em;
   cursor: pointer;
   transition:
-    opacity 0.15s,
+    background-color 0.15s,
     color 0.15s;
-  border: none;
-  background: none;
-  padding: 0;
 }
 
-.markdown .heading-fold-toggle svg {
-  transition: transform 0.15s;
-  transform: rotate(90deg);
-}
-
-.markdown .heading-fold-toggle[data-folded] svg {
-  transform: rotate(0deg);
-}
-
-.markdown .heading-fold-toggle[data-folded] {
-  opacity: 1;
+.markdown .heading-fold-pill:hover {
+  background-color: var(--color-bg-secondary-hover, var(--color-bg-tertiary));
   color: var(--color-text-secondary);
-}
-
-.markdown :where(h1, h2, h3, h4, h5, h6):hover .heading-fold-toggle,
-.markdown .heading-fold-toggle:focus-visible {
-  opacity: 1;
-}
-
-.markdown .heading-fold-toggle:hover {
-  color: var(--color-text);
-}
-
-@media (pointer: coarse) {
-  .markdown .heading-fold-toggle {
-    opacity: 1;
-  }
 }

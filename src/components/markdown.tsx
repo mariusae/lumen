@@ -386,7 +386,6 @@ export function MarkdownContent({ children, className }: { children: string; cla
   )
 }
 
-const FOLD_COMMENT = "<!-- folded -->"
 const FOLD_COMMENT_RE = /\s*<!--\s*folded\s*-->/
 
 function HeadingWithFold({
@@ -407,48 +406,39 @@ function HeadingWithFold({
   // Clean data-folded from DOM props
   const { "data-folded": _, ...domProps } = props as Record<string, unknown>
 
-  const toggleFold = React.useCallback(() => {
+  const unfold = React.useCallback(() => {
     if (!onChange || !node?.position) return
 
     const startOffset = node.position.start.offset ?? 0
     const endOffset = node.position.end.offset ?? 0
     const headingLine = markdownBody.slice(startOffset, endOffset)
 
-    let newLine: string
-    if (FOLD_COMMENT_RE.test(headingLine)) {
-      newLine = headingLine.replace(FOLD_COMMENT_RE, "")
-    } else {
-      newLine = `${headingLine} ${FOLD_COMMENT}`
-    }
-
+    const newLine = headingLine.replace(FOLD_COMMENT_RE, "")
     const newBody = markdownBody.slice(0, startOffset) + newLine + markdownBody.slice(endOffset)
     onChange(newBody)
   }, [markdownBody, node?.position, onChange])
 
   return (
-    <Tag {...(domProps as React.ComponentPropsWithoutRef<"h1">)} className="group/heading relative">
-      {onChange ? (
+    <Tag {...(domProps as React.ComponentPropsWithoutRef<"h1">)}>
+      {children}
+      {isFolded && onChange ? (
         <button
           type="button"
-          className="heading-fold-toggle"
-          aria-label={isFolded ? "Unfold section" : "Fold section"}
-          data-folded={isFolded || undefined}
+          className="heading-fold-pill"
+          aria-label="Unfold section"
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            toggleFold()
+            unfold()
           }}
           onMouseDown={(event) => {
             // Prevent double-click to edit from firing
             event.stopPropagation()
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M6 3.5L11 8L6 12.5V3.5Z" />
-          </svg>
+          &hellip;
         </button>
       ) : null}
-      {children}
     </Tag>
   )
 }

@@ -36,9 +36,8 @@ export function NotePreviewCard(props: NoteCardProps) {
   const isResolvingRepo = useAtomValue(isResolvingRepoAtom)
 
   // Show a loading state while resolving the repo
-  // TODO: Add shimmer animation
   if (isResolvingRepo) {
-    return <div className="aspect-[5/3] w-full rounded-lg bg-bg-secondary" />
+    return <div className="aspect-[5/3] w-full animate-pulse rounded-lg bg-bg-secondary" />
   }
 
   return <_NotePreviewCard {...props} />

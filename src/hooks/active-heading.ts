@@ -1,59 +1,87 @@
 import React from "react"
 import { Heading, extractHeadings } from "../components/heading-nav"
 
+const HEADING_TAG_RE = /^H([1-6])$/
+
+/** Query heading elements inside .markdown containers within a scroll container. */
+function getReadModeHeadingElements(scrollContainer: HTMLElement): HTMLElement[] {
+  return Array.from(
+    scrollContainer.querySelectorAll<HTMLElement>(
+      ".markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6",
+    ),
+  )
+}
+
+/** Query heading-decorated CodeMirror lines within a scroll container. */
+function getWriteModeHeadingElements(scrollContainer: HTMLElement): HTMLElement[] {
+  return Array.from(scrollContainer.querySelectorAll<HTMLElement>(".cm-line")).filter(
+    (el) => el.style.fontWeight !== "",
+  )
+}
+
+/** Build a Heading[] from rendered DOM elements in read mode. */
+function extractHeadingsFromDOM(scrollContainer: HTMLElement): Heading[] {
+  const elements = getReadModeHeadingElements(scrollContainer)
+  return elements.map((el, index) => {
+    const tagMatch = el.tagName.match(HEADING_TAG_RE)
+    const level = tagMatch ? Number(tagMatch[1]) : 1
+    return {
+      level,
+      text: el.textContent?.trim() ?? "",
+      index,
+    }
+  })
+}
+
 /**
  * Track which heading is currently at the top of the viewport.
  *
- * For both read and write modes, we find heading elements in the DOM inside
- * the scroll container and determine which one is at or just above the visible area.
- *
- * @param scrollContainer - The scrollable element (the `<main>` from PageLayout)
- * @param markdown - The raw markdown text (to extract heading metadata)
- * @param mode - "read" or "write"
+ * In read mode, headings are extracted from the rendered DOM so that wikilinks,
+ * dates, etc. appear in their displayed form (e.g. "Fri, Feb 13" instead of
+ * "[[2026-02-13]]"). In write mode, headings are parsed from the raw markdown.
  */
 export function useActiveHeading(
   scrollContainer: HTMLElement | null,
   markdown: string,
   mode: "read" | "write",
 ) {
-  const headings = React.useMemo(() => extractHeadings(markdown), [markdown])
+  const markdownHeadings = React.useMemo(() => extractHeadings(markdown), [markdown])
+  const [domHeadings, setDomHeadings] = React.useState<Heading[]>([])
   const [activeIndex, setActiveIndex] = React.useState(-1)
 
+  const headings = mode === "read" ? domHeadings : markdownHeadings
+
   React.useEffect(() => {
-    if (!scrollContainer || headings.length === 0) {
+    if (!scrollContainer) {
       setActiveIndex(-1)
+      setDomHeadings([])
       return
+    }
+
+    function getHeadingElements(): HTMLElement[] {
+      if (!scrollContainer) return []
+      return mode === "read"
+        ? getReadModeHeadingElements(scrollContainer)
+        : getWriteModeHeadingElements(scrollContainer)
     }
 
     function update() {
       if (!scrollContainer) return
 
-      const containerRect = scrollContainer.getBoundingClientRect()
-      // Threshold: a heading is "active" if its top is within this distance of the container top
-      const threshold = containerRect.top + 80
-
-      let headingElements: Element[]
-
+      // In read mode, refresh headings from the DOM on each update
+      // so we always have the rendered text
       if (mode === "read") {
-        // In read mode, query semantic heading elements inside .markdown
-        headingElements = Array.from(
-          scrollContainer.querySelectorAll(
-            ".markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6",
-          ),
-        )
-      } else {
-        // In write mode, query CodeMirror lines that have heading font-weight styling
-        // The heading extension applies inline styles with font-weight: var(--font-weight-bold)
-        headingElements = Array.from(scrollContainer.querySelectorAll(".cm-line")).filter((el) => {
-          const style = (el as HTMLElement).style
-          return style.fontWeight !== ""
-        })
+        setDomHeadings(extractHeadingsFromDOM(scrollContainer))
       }
 
-      // Find the last heading element whose top is at or above the threshold
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const threshold = containerRect.top + 80
+
+      const elements = getHeadingElements()
+
       let bestIdx = -1
-      for (let i = 0; i < headingElements.length; i++) {
-        const rect = headingElements[i].getBoundingClientRect()
+      for (let i = 0; i < elements.length; i++) {
+        const rect = elements[i].getBoundingClientRect()
         if (rect.top <= threshold) {
           bestIdx = i
         } else {
@@ -61,11 +89,10 @@ export function useActiveHeading(
         }
       }
 
-      // Map DOM element index to heading index
-      // In both modes, headings appear in document order, so DOM index maps to heading index
-      if (bestIdx >= 0 && bestIdx < headings.length) {
+      const currentHeadings = mode === "read" ? elements : markdownHeadings
+      if (bestIdx >= 0 && bestIdx < currentHeadings.length) {
         setActiveIndex(bestIdx)
-      } else if (bestIdx === -1) {
+      } else {
         setActiveIndex(-1)
       }
     }
@@ -73,7 +100,6 @@ export function useActiveHeading(
     update()
 
     scrollContainer.addEventListener("scroll", update, { passive: true })
-    // Also listen for resize since layout changes affect positions
     const observer = new ResizeObserver(update)
     observer.observe(scrollContainer)
 
@@ -81,28 +107,18 @@ export function useActiveHeading(
       scrollContainer.removeEventListener("scroll", update)
       observer.disconnect()
     }
-  }, [scrollContainer, headings, mode])
+  }, [scrollContainer, markdownHeadings, mode])
 
   const scrollToHeading = React.useCallback(
     (heading: Heading) => {
       if (!scrollContainer) return
 
-      let headingElements: Element[]
+      const elements =
+        mode === "read"
+          ? getReadModeHeadingElements(scrollContainer)
+          : getWriteModeHeadingElements(scrollContainer)
 
-      if (mode === "read") {
-        headingElements = Array.from(
-          scrollContainer.querySelectorAll(
-            ".markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6",
-          ),
-        )
-      } else {
-        headingElements = Array.from(scrollContainer.querySelectorAll(".cm-line")).filter((el) => {
-          const style = (el as HTMLElement).style
-          return style.fontWeight !== ""
-        })
-      }
-
-      const element = headingElements[heading.index]
+      const element = elements[heading.index]
       if (element) {
         const containerRect = scrollContainer.getBoundingClientRect()
         const elementRect = element.getBoundingClientRect()

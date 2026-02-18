@@ -180,6 +180,7 @@ function NotePage() {
     scrollContainer,
     editorValue,
     mode,
+    parsedNote?.displayName,
   )
 
   // Resolve font (frontmatter font or default)
@@ -843,7 +844,7 @@ function NotePage() {
             ) : null}
 
             {mode === "read" && (
-              <div className="min-h-[240px]">
+              <div className="min-h-[240px]" data-note-content>
                 {parsedNote?.frontmatter?.gist_id ? (
                   <div className="mb-5 print:hidden">
                     <PillButton

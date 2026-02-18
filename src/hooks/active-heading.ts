@@ -3,10 +3,13 @@ import { Heading, extractHeadings } from "../components/heading-nav"
 
 const HEADING_TAG_RE = /^H([1-6])$/
 
-/** Query heading elements inside .markdown containers within a scroll container. */
+/** Query heading elements inside the main note's .markdown container only. */
 function getReadModeHeadingElements(scrollContainer: HTMLElement): HTMLElement[] {
+  // Scope to [data-note-content] to avoid picking up headings from backlinks/embeds
+  const noteContent = scrollContainer.querySelector("[data-note-content]")
+  if (!noteContent) return []
   return Array.from(
-    scrollContainer.querySelectorAll<HTMLElement>(
+    noteContent.querySelectorAll<HTMLElement>(
       ".markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6",
     ),
   )
@@ -37,22 +40,51 @@ function extractHeadingsFromDOM(scrollContainer: HTMLElement): Heading[] {
  * In read mode, headings are extracted from the rendered DOM so that wikilinks,
  * dates, etc. appear in their displayed form (e.g. "Fri, Feb 13" instead of
  * "[[2026-02-13]]"). In write mode, headings are parsed from the raw markdown.
+ *
+ * When the document doesn't begin with a heading, a pseudo-header using the
+ * note's display name is prepended so there's always a breadcrumb visible.
  */
 export function useActiveHeading(
   scrollContainer: HTMLElement | null,
   markdown: string,
   mode: "read" | "write",
+  displayName?: string,
 ) {
-  const markdownHeadings = React.useMemo(() => extractHeadings(markdown), [markdown])
-  const [domHeadings, setDomHeadings] = React.useState<Heading[]>([])
+  const rawMarkdownHeadings = React.useMemo(() => extractHeadings(markdown), [markdown])
+
+  // Does the document content (after frontmatter) start with a heading?
+  const startsWithHeading = React.useMemo(() => {
+    let content = markdown
+    if (content.startsWith("---\n")) {
+      const endIndex = content.indexOf("\n---\n", 4)
+      if (endIndex !== -1) {
+        content = content.slice(endIndex + 5)
+      }
+    }
+    return /^#{1,6}\s/.test(content.trimStart())
+  }, [markdown])
+
+  const [rawDomHeadings, setRawDomHeadings] = React.useState<Heading[]>([])
   const [activeIndex, setActiveIndex] = React.useState(-1)
 
-  const headings = mode === "read" ? domHeadings : markdownHeadings
+  // Prepend a pseudo-header when the doc has headings but doesn't start with one,
+  // so the pre-heading content is navigable via the breadcrumb.
+  const hasHeadings = rawMarkdownHeadings.length > 0
+  const needsPseudoHeader = hasHeadings && !startsWithHeading && !!displayName
+  const pseudoHeader: Heading | null = needsPseudoHeader
+    ? { level: 0, text: displayName, index: -1 }
+    : null
+
+  const headings = React.useMemo(() => {
+    const raw = mode === "read" ? rawDomHeadings : rawMarkdownHeadings
+    if (!pseudoHeader) return raw
+    return [pseudoHeader, ...raw]
+  }, [mode, rawDomHeadings, rawMarkdownHeadings, pseudoHeader])
 
   React.useEffect(() => {
     if (!scrollContainer) {
       setActiveIndex(-1)
-      setDomHeadings([])
+      setRawDomHeadings([])
       return
     }
 
@@ -66,10 +98,8 @@ export function useActiveHeading(
     function update() {
       if (!scrollContainer) return
 
-      // In read mode, refresh headings from the DOM on each update
-      // so we always have the rendered text
       if (mode === "read") {
-        setDomHeadings(extractHeadingsFromDOM(scrollContainer))
+        setRawDomHeadings(extractHeadingsFromDOM(scrollContainer))
       }
 
       const containerRect = scrollContainer.getBoundingClientRect()
@@ -101,9 +131,14 @@ export function useActiveHeading(
         }
       }
 
-      const currentHeadings = mode === "read" ? elements : markdownHeadings
-      if (bestIdx >= 0 && bestIdx < currentHeadings.length) {
-        setActiveIndex(bestIdx)
+      // Shift index to account for pseudo-header at position 0
+      const offset = needsPseudoHeader ? 1 : 0
+
+      if (bestIdx >= 0) {
+        setActiveIndex(bestIdx + offset)
+      } else if (needsPseudoHeader) {
+        // Before any real heading is visible, activate the pseudo-header
+        setActiveIndex(0)
       } else {
         setActiveIndex(-1)
       }
@@ -119,11 +154,17 @@ export function useActiveHeading(
       scrollContainer.removeEventListener("scroll", update)
       observer.disconnect()
     }
-  }, [scrollContainer, markdownHeadings, mode])
+  }, [scrollContainer, rawMarkdownHeadings, mode, needsPseudoHeader])
 
   const scrollToHeading = React.useCallback(
     (heading: Heading) => {
       if (!scrollContainer) return
+
+      // Pseudo-header: scroll to the top of the document
+      if (heading.index === -1) {
+        scrollContainer.scrollTo({ top: 0, behavior: "smooth" })
+        return
+      }
 
       const elements =
         mode === "read"

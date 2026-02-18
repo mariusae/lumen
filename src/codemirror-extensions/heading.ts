@@ -197,9 +197,8 @@ const headingFoldTheme = EditorView.baseTheme({
     padding: "0",
     borderRadius: "var(--border-radius-sm, 3px)",
     color: "var(--color-text-tertiary, #999)",
-    opacity: "0",
     cursor: "pointer",
-    transition: "opacity 0.15s, color 0.15s",
+    transition: "color 0.15s",
   },
   ".cm-heading-fold-toggle svg": {
     transition: "transform 0.15s",
@@ -209,15 +208,9 @@ const headingFoldTheme = EditorView.baseTheme({
     transform: "rotate(0deg)",
   },
   ".cm-heading-fold-toggle[data-folded]": {
-    opacity: "1",
     color: "var(--color-text-secondary, #666)",
   },
-  // Show toggle on gutter-element hover (covers the whole line height)
-  ".cm-heading-fold-gutter .cm-gutterElement:hover .cm-heading-fold-toggle": {
-    opacity: "1",
-  },
   ".cm-heading-fold-toggle:hover": {
-    opacity: "1",
     color: "var(--color-text, #333)",
   },
 })

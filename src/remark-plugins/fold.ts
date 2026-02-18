@@ -46,13 +46,13 @@ export function remarkFold(): ReturnType<Plugin<[], Root>> {
         }
 
         if (isFolded) {
-          const level = node.level
+          const depth = node.depth
           // Collect all nodes until the next heading of same or higher level
           const foldedNodes: Content[] = []
           let j = i + 1
           while (j < tree.children.length) {
             const next = tree.children[j]
-            if (next.type === "heading" && next.level <= level) {
+            if (next.type === "heading" && next.depth <= depth) {
               break
             }
             foldedNodes.push(next)

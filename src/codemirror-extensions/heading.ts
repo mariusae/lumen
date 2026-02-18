@@ -1,18 +1,20 @@
-import { EditorState, Extension, Line, Range, StateField } from "@codemirror/state"
-import { Decoration, DecorationSet, EditorView, WidgetType } from "@codemirror/view"
+import { EditorState, Extension, Line, Range, RangeSet, StateField } from "@codemirror/state"
+import { Decoration, DecorationSet, EditorView, GutterMarker, gutter } from "@codemirror/view"
 
 const FOLD_COMMENT = "<!-- folded -->"
 const FOLD_COMMENT_RE = /\s*<!--\s*folded\s*-->\s*$/
 
-class FoldToggleWidget extends WidgetType {
+// ── Gutter marker for fold toggle ──────────────────────────────────
+
+class FoldGutterMarker extends GutterMarker {
   constructor(
-    private folded: boolean,
-    private headingFrom: number,
+    readonly folded: boolean,
+    readonly headingFrom: number,
   ) {
     super()
   }
 
-  eq(other: FoldToggleWidget) {
+  eq(other: FoldGutterMarker) {
     return this.folded === other.folded && this.headingFrom === other.headingFrom
   }
 
@@ -47,11 +49,9 @@ class FoldToggleWidget extends WidgetType {
 
     return button
   }
-
-  ignoreEvent() {
-    return false
-  }
 }
+
+// ── Heading analysis ───────────────────────────────────────────────
 
 interface HeadingInfo {
   line: Line
@@ -90,7 +90,9 @@ function findFoldEnd(state: EditorState, headingLine: Line, level: number): numb
   return state.doc.length
 }
 
-function buildDecorations(state: EditorState): DecorationSet {
+// ── Line decorations (heading style + fold replace) ────────────────
+
+function buildLineDecorations(state: EditorState): DecorationSet {
   const decorations: Range<Decoration>[] = []
   const headings = findHeadings(state)
 
@@ -102,7 +104,6 @@ function buildDecorations(state: EditorState): DecorationSet {
       fontSize = "var(--font-size-lg)"
     }
 
-    // Line decoration for heading styling
     decorations.push(
       Decoration.line({
         attributes: {
@@ -113,15 +114,6 @@ function buildDecorations(state: EditorState): DecorationSet {
       }).range(heading.line.from),
     )
 
-    // Fold toggle widget at the start of the heading line
-    decorations.push(
-      Decoration.widget({
-        widget: new FoldToggleWidget(heading.folded, heading.line.from),
-        side: -1,
-      }).range(heading.line.from),
-    )
-
-    // If folded, hide everything from end of heading line to next same-or-higher-level heading
     if (heading.folded) {
       const foldEnd = findFoldEnd(state, heading.line, heading.level)
       if (foldEnd > heading.line.to) {
@@ -138,41 +130,78 @@ function buildDecorations(state: EditorState): DecorationSet {
   return Decoration.set(decorations)
 }
 
-const headingField = StateField.define<DecorationSet>({
+const lineDecorationField = StateField.define<DecorationSet>({
   create(state) {
-    return buildDecorations(state)
+    return buildLineDecorations(state)
   },
   update(decorations, tr) {
     if (tr.docChanged) {
-      return buildDecorations(tr.state)
+      return buildLineDecorations(tr.state)
     }
     return decorations
   },
   provide: (f) => EditorView.decorations.from(f),
 })
 
-const headingFoldStyle = EditorView.baseTheme({
-  // The toggle is a zero-width inline element that overflows left into the
-  // parent container's padding (the note page applies p-5 / p-10).
+// ── Gutter markers ─────────────────────────────────────────────────
+
+function buildGutterMarkers(state: EditorState): RangeSet<FoldGutterMarker> {
+  const markers: Range<FoldGutterMarker>[] = []
+  const headings = findHeadings(state)
+
+  for (const heading of headings) {
+    markers.push(new FoldGutterMarker(heading.folded, heading.line.from).range(heading.line.from))
+  }
+
+  return RangeSet.of(markers)
+}
+
+const gutterMarkerField = StateField.define<RangeSet<FoldGutterMarker>>({
+  create(state) {
+    return buildGutterMarkers(state)
+  },
+  update(markers, tr) {
+    if (tr.docChanged) {
+      return buildGutterMarkers(tr.state)
+    }
+    return markers
+  },
+})
+
+const foldGutter = gutter({
+  class: "cm-heading-fold-gutter",
+  markers: (view) => view.state.field(gutterMarkerField),
+})
+
+// ── Theme ──────────────────────────────────────────────────────────
+
+const headingFoldTheme = EditorView.baseTheme({
+  ".cm-heading-fold-gutter": {
+    width: "20px",
+    cursor: "default",
+  },
+  ".cm-heading-fold-gutter .cm-gutterElement": {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 !important",
+  },
   ".cm-heading-fold-toggle": {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "0",
-    overflow: "visible",
-    verticalAlign: "middle",
+    width: "20px",
+    height: "20px",
     border: "none",
     background: "none",
     padding: "0",
-    cursor: "pointer",
+    borderRadius: "var(--border-radius-sm, 3px)",
     color: "var(--color-text-tertiary, #999)",
     opacity: "0",
+    cursor: "pointer",
     transition: "opacity 0.15s, color 0.15s",
   },
   ".cm-heading-fold-toggle svg": {
-    // Pull the 16px icon left so it sits in the parent's padding area
-    marginLeft: "-24px",
-    marginRight: "8px",
     transition: "transform 0.15s",
     transform: "rotate(90deg)",
   },
@@ -183,14 +212,18 @@ const headingFoldStyle = EditorView.baseTheme({
     opacity: "1",
     color: "var(--color-text-secondary, #666)",
   },
-  ".cm-line[data-heading-level]:hover .cm-heading-fold-toggle": {
+  // Show toggle on gutter-element hover (covers the whole line height)
+  ".cm-heading-fold-gutter .cm-gutterElement:hover .cm-heading-fold-toggle": {
     opacity: "1",
   },
   ".cm-heading-fold-toggle:hover": {
+    opacity: "1",
     color: "var(--color-text, #333)",
   },
 })
 
+// ── Extension ──────────────────────────────────────────────────────
+
 export function headingExtension(): Extension {
-  return [headingField, headingFoldStyle]
+  return [lineDecorationField, gutterMarkerField, foldGutter, headingFoldTheme]
 }

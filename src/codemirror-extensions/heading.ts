@@ -111,20 +111,16 @@ function buildDecorations(state: EditorState): DecorationSet {
     )
 
     if (heading.folded) {
-      // Hide the <!-- folded --> comment text on the heading line
+      // Replace the <!-- folded --> comment with the ellipsis pill widget
       const commentMatch = heading.line.text.match(FOLD_COMMENT_RE)
       if (commentMatch) {
         const commentStart = heading.line.from + commentMatch.index!
-        decorations.push(Decoration.replace({}).range(commentStart, heading.line.to))
+        decorations.push(
+          Decoration.replace({
+            widget: new FoldPillWidget(heading.line.from),
+          }).range(commentStart, heading.line.to),
+        )
       }
-
-      // Ellipsis pill widget at end of visible heading text
-      decorations.push(
-        Decoration.widget({
-          widget: new FoldPillWidget(heading.line.from),
-          side: 1,
-        }).range(heading.line.to),
-      )
 
       // Hide the folded content
       const foldEnd = findFoldEnd(state, heading.line, heading.level)

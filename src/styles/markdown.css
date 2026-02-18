@@ -178,29 +178,3 @@
 .markdown .mermaid-error {
   margin-block: calc(var(--font-size-base) * 1.25);
 }
-
-/* Heading fold ellipsis pill */
-.markdown .heading-fold-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  margin-left: 0.5em;
-  padding: 0 0.5em;
-  height: 1.4em;
-  border: none;
-  border-radius: 999px;
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-tertiary);
-  font-size: 0.55em;
-  line-height: 0;
-  cursor: pointer;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-}
-
-.markdown .heading-fold-pill:hover {
-  background-color: var(--color-bg-secondary-hover, var(--color-bg-tertiary));
-  color: var(--color-text-secondary);
-}

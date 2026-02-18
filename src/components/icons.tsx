@@ -1144,6 +1144,14 @@ export function FlagFillIcon16(props: IconProps) {
   )
 }
 
+export function PilcrowIcon16(props: IconProps) {
+  return (
+    <Icon size={16} {...props}>
+      <path d="M6.5 1C4.567 1 3 2.567 3 4.5S4.567 8 6.5 8H7v6.5a.75.75 0 0 0 1.5 0V2.5H10v12a.75.75 0 0 0 1.5 0V2.5h.75a.75.75 0 0 0 0-1.5H6.5zM4.5 4.5a2 2 0 0 1 2-2H7v4H6.5a2 2 0 0 1-2-2z" />
+    </Icon>
+  )
+}
+
 export function MaximizeIcon16(props: IconProps) {
   return (
     <Icon size={16} {...props}>

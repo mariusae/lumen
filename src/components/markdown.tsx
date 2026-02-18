@@ -59,6 +59,7 @@ import {
   CutIcon16,
   ErrorIcon16,
   MoreIcon16,
+  PilcrowIcon16,
   TrashIcon16,
 } from "./icons"
 import { FootnoteRefLink } from "./footnote-ref-link"
@@ -404,7 +405,7 @@ function HeadingWithFold({
     | "h6"
 
   // Clean data-folded from DOM props
-  const { "data-folded": _, ...domProps } = props as Record<string, unknown>
+  const { "data-folded": _, className, ...domProps } = props as Record<string, unknown>
 
   const unfold = React.useCallback(() => {
     if (!onChange || !node?.position) return
@@ -418,26 +419,44 @@ function HeadingWithFold({
     onChange(newBody)
   }, [markdownBody, node?.position, onChange])
 
+  const fold = React.useCallback(() => {
+    if (!onChange || !node?.position) return
+
+    const startOffset = node.position.start.offset ?? 0
+    const endOffset = node.position.end.offset ?? 0
+    const headingLine = markdownBody.slice(startOffset, endOffset)
+
+    const newLine = headingLine + " <!-- folded -->"
+    const newBody = markdownBody.slice(0, startOffset) + newLine + markdownBody.slice(endOffset)
+    onChange(newBody)
+  }, [markdownBody, node?.position, onChange])
+
   return (
-    <Tag {...(domProps as React.ComponentPropsWithoutRef<"h1">)}>
+    <Tag
+      {...(domProps as React.ComponentPropsWithoutRef<"h1">)}
+      className={cx(className as string, onChange && "relative pr-10 coarse:pr-12 group/heading")}
+    >
       {children}
-      {isFolded && onChange ? (
-        <button
-          type="button"
-          className="heading-fold-pill"
-          aria-label="Unfold section"
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            unfold()
-          }}
-          onMouseDown={(event) => {
-            // Prevent double-click to edit from firing
-            event.stopPropagation()
-          }}
-        >
-          &hellip;
-        </button>
+      {onChange ? (
+        <div className="absolute top-1/2 -translate-y-1/2 right-0">
+          <IconButton
+            aria-label={isFolded ? "Unfold section" : "Fold section"}
+            tooltipSide="top"
+            size="small"
+            className="opacity-0 group-hover/heading:opacity-100 focus-visible:opacity-100 coarse:opacity-100"
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              isFolded ? unfold() : fold()
+            }}
+            onMouseDown={(event) => {
+              // Prevent double-click to edit from firing
+              event.stopPropagation()
+            }}
+          >
+            {isFolded ? <MoreIcon16 /> : <PilcrowIcon16 />}
+          </IconButton>
+        </div>
       ) : null}
     </Tag>
   )

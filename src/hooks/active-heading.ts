@@ -14,9 +14,7 @@ function getReadModeHeadingElements(scrollContainer: HTMLElement): HTMLElement[]
 
 /** Query heading-decorated CodeMirror lines within a scroll container. */
 function getWriteModeHeadingElements(scrollContainer: HTMLElement): HTMLElement[] {
-  return Array.from(scrollContainer.querySelectorAll<HTMLElement>(".cm-line")).filter(
-    (el) => el.style.fontWeight !== "",
-  )
+  return Array.from(scrollContainer.querySelectorAll<HTMLElement>(".cm-line[data-heading-level]"))
 }
 
 /** Build a Heading[] from rendered DOM elements in read mode. */
@@ -75,10 +73,12 @@ export function useActiveHeading(
       }
 
       const containerRect = scrollContainer.getBoundingClientRect()
+      const containerBottom = containerRect.bottom
       const threshold = containerRect.top + 80
 
       const elements = getHeadingElements()
 
+      // Find the last heading whose top is at or above the threshold (scrolled past)
       let bestIdx = -1
       for (let i = 0; i < elements.length; i++) {
         const rect = elements[i].getBoundingClientRect()
@@ -86,6 +86,18 @@ export function useActiveHeading(
           bestIdx = i
         } else {
           break
+        }
+      }
+
+      // If no heading has been scrolled past, use the first heading
+      // that is visible in the viewport
+      if (bestIdx === -1) {
+        for (let i = 0; i < elements.length; i++) {
+          const rect = elements[i].getBoundingClientRect()
+          if (rect.top < containerBottom) {
+            bestIdx = i
+            break
+          }
         }
       }
 

@@ -98,6 +98,7 @@ function getLineDecoration(line: Line) {
     return Decoration.line({
       attributes: {
         style: `font-weight: var(--font-weight-bold);${fontSize ? ` font-size: ${fontSize};` : ""}`,
+        "data-heading-level": String(level),
       },
     })
   }

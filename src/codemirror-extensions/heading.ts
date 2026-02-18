@@ -1,5 +1,16 @@
-import { EditorState, Extension, Line, Range, RangeSet, StateField } from "@codemirror/state"
+import {
+  Annotation,
+  EditorState,
+  Extension,
+  Line,
+  Range,
+  RangeSet,
+  StateField,
+} from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView, GutterMarker, gutter } from "@codemirror/view"
+
+/** Annotation used to mark fold-toggle transactions so the auto-unfold listener skips them. */
+const foldToggle = Annotation.define<boolean>()
 
 const FOLD_COMMENT = "<!-- folded -->"
 const FOLD_COMMENT_RE = /\s*<!--\s*folded\s*-->\s*$/
@@ -39,10 +50,12 @@ class FoldGutterMarker extends GutterMarker {
         const newText = lineText.replace(FOLD_COMMENT_RE, "")
         view.dispatch({
           changes: { from: line.from, to: line.to, insert: newText },
+          annotations: foldToggle.of(true),
         })
       } else {
         view.dispatch({
           changes: { from: line.to, insert: ` ${FOLD_COMMENT}` },
+          annotations: foldToggle.of(true),
         })
       }
     })
@@ -215,8 +228,42 @@ const headingFoldTheme = EditorView.baseTheme({
   },
 })
 
+// ── Auto-unfold when editing a folded heading ─────────────────────
+
+const autoUnfold = EditorView.updateListener.of((update) => {
+  if (!update.docChanged) return
+
+  // Skip if this change was dispatched by the fold toggle itself
+  for (const tr of update.transactions) {
+    if (tr.annotation(foldToggle)) return
+  }
+
+  // Check if any change touched a folded heading line — if so, unfold it.
+  // This handles typing at the end of a folded heading, pressing Enter, etc.
+  const changes: { from: number; to: number; insert: string }[] = []
+
+  update.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    const state = update.state
+    // Check lines in the changed range of the new document
+    const startLine = state.doc.lineAt(fromB)
+    const endLine = state.doc.lineAt(Math.min(toB, state.doc.length))
+
+    for (let lineNum = startLine.number; lineNum <= endLine.number; lineNum++) {
+      const line = state.doc.line(lineNum)
+      if (/^#{1,6}\s/.test(line.text) && FOLD_COMMENT_RE.test(line.text)) {
+        const newText = line.text.replace(FOLD_COMMENT_RE, "")
+        changes.push({ from: line.from, to: line.to, insert: newText })
+      }
+    }
+  })
+
+  if (changes.length > 0) {
+    update.view.dispatch({ changes })
+  }
+})
+
 // ── Extension ──────────────────────────────────────────────────────
 
 export function headingExtension(): Extension {
-  return [lineDecorationField, gutterMarkerField, foldGutter, headingFoldTheme]
+  return [lineDecorationField, gutterMarkerField, foldGutter, autoUnfold, headingFoldTheme]
 }

@@ -24,6 +24,7 @@ import {
   moveListItemToBottom,
 } from "../utils/reorder-list-item"
 import { remarkEmbed } from "../remark-plugins/embed"
+import { remarkFold } from "../remark-plugins/fold"
 import { remarkHighlight } from "../remark-plugins/highlight"
 import { remarkLinkCard } from "../remark-plugins/link-card"
 import { remarkPriority } from "../remark-plugins/priority"
@@ -313,6 +314,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         remarkTag,
         remarkPriority,
         remarkHighlight,
+        remarkFold,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
       rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -358,6 +360,12 @@ export function MarkdownContent({ children, className }: { children: string; cla
         a: Anchor,
         img: Image,
         li: ListItem,
+        h1: HeadingWithFold,
+        h2: HeadingWithFold,
+        h3: HeadingWithFold,
+        h4: HeadingWithFold,
+        h5: HeadingWithFold,
+        h6: HeadingWithFold,
         // Delegate rendering of the <pre> element to the Code component
         pre: ({ children }) => <>{children}</>,
         code: Code,
@@ -375,6 +383,73 @@ export function MarkdownContent({ children, className }: { children: string; cla
     >
       {children}
     </ReactMarkdown>
+  )
+}
+
+const FOLD_COMMENT = "<!-- folded -->"
+const FOLD_COMMENT_RE = /\s*<!--\s*folded\s*-->/
+
+function HeadingWithFold({
+  node,
+  children,
+  ...props
+}: React.ComponentPropsWithoutRef<"h1"> & { node?: any }) {
+  const { markdownBody, onChange } = React.useContext(MarkdownContext)
+  const isFolded = props["data-folded" as keyof typeof props] === "true"
+  const Tag = `h${node?.tagName?.match?.(/\d/)?.[0] ?? "2"}` as
+    | "h1"
+    | "h2"
+    | "h3"
+    | "h4"
+    | "h5"
+    | "h6"
+
+  // Clean data-folded from DOM props
+  const { "data-folded": _, ...domProps } = props as Record<string, unknown>
+
+  const toggleFold = React.useCallback(() => {
+    if (!onChange || !node?.position) return
+
+    const startOffset = node.position.start.offset ?? 0
+    const endOffset = node.position.end.offset ?? 0
+    const headingLine = markdownBody.slice(startOffset, endOffset)
+
+    let newLine: string
+    if (FOLD_COMMENT_RE.test(headingLine)) {
+      newLine = headingLine.replace(FOLD_COMMENT_RE, "")
+    } else {
+      newLine = `${headingLine} ${FOLD_COMMENT}`
+    }
+
+    const newBody = markdownBody.slice(0, startOffset) + newLine + markdownBody.slice(endOffset)
+    onChange(newBody)
+  }, [markdownBody, node?.position, onChange])
+
+  return (
+    <Tag {...(domProps as React.ComponentPropsWithoutRef<"h1">)} className="group/heading relative">
+      {onChange ? (
+        <button
+          type="button"
+          className="heading-fold-toggle"
+          aria-label={isFolded ? "Unfold section" : "Fold section"}
+          data-folded={isFolded || undefined}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            toggleFold()
+          }}
+          onMouseDown={(event) => {
+            // Prevent double-click to edit from firing
+            event.stopPropagation()
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6 3.5L11 8L6 12.5V3.5Z" />
+          </svg>
+        </button>
+      ) : null}
+      {children}
+    </Tag>
   )
 }
 

@@ -136,10 +136,19 @@ function buildDecorations(state: EditorState): DecorationSet {
     )
 
     if (heading.folded) {
-      // Hide the <!-- folded --> comment (no inline widget)
       const commentMatch = heading.line.text.match(FOLD_COMMENT_RE)
       if (commentMatch) {
         const commentStart = heading.line.from + commentMatch.index!
+
+        // Action widget just before the hidden comment
+        decorations.push(
+          Decoration.widget({
+            widget: new HeadingActionWidget(heading.line.from, true),
+            side: -1,
+          }).range(commentStart),
+        )
+
+        // Hide the <!-- folded --> comment
         decorations.push(Decoration.replace({}).range(commentStart, heading.line.to))
       }
 
@@ -152,15 +161,15 @@ function buildDecorations(state: EditorState): DecorationSet {
           }).range(heading.line.to, foldEnd),
         )
       }
+    } else {
+      // Action widget at end of line for unfolded headings
+      decorations.push(
+        Decoration.widget({
+          widget: new HeadingActionWidget(heading.line.from, false),
+          side: 1,
+        }).range(heading.line.to),
+      )
     }
-
-    // Right-side action widget for all headings
-    decorations.push(
-      Decoration.widget({
-        widget: new HeadingActionWidget(heading.line.from, heading.folded),
-        side: 1,
-      }).range(heading.line.to),
-    )
   }
 
   decorations.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide)

@@ -31,11 +31,11 @@ class HeadingActionWidget extends WidgetType {
     // SVG icon: chevron-right when folded, chevron-down when unfolded
     const chevronPath =
       "M9.73242 2.20695C10.0321 1.92131 10.5071 1.93284 10.793 2.23234C11.0786 2.53199 11.0671 3.007 10.7676 3.29289L5.83594 7.99992L10.7676 12.707C11.0671 12.9928 11.0786 13.4679 10.793 13.7675C10.5248 14.0484 10.0901 14.0761 9.79004 13.8427L9.73242 13.7929L4.23242 8.54289C4.08416 8.40137 4 8.20488 4 7.99992C4 7.79496 4.08416 7.59847 4.23242 7.45695L9.73242 2.20695Z"
-    // Folded = chevron-right (mirror chevron-left), unfolded = chevron-down (rotate -90)
-    const transform = this.isFolded ? "scale(-1,1)" : "rotate(-90)"
+    // Folded = chevron-left (path as-is), unfolded = chevron-down (rotate -90)
+    const transform = this.isFolded ? "" : ' transform="rotate(-90)" transform-origin="8 8"'
     btn.innerHTML =
       '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">' +
-      `<g transform="${transform}" transform-origin="8 8"><path d="${chevronPath}"/></g>` +
+      `<path d="${chevronPath}"${transform}/>` +
       "</svg>"
 
     const headingFrom = this.headingFrom

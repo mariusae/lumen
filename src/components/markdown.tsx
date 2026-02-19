@@ -59,7 +59,7 @@ import {
   CutIcon16,
   ErrorIcon16,
   ChevronDownIcon16,
-  ChevronRightIcon16,
+  ChevronLeftIcon16,
   MoreIcon16,
   TrashIcon16,
 } from "./icons"
@@ -455,7 +455,7 @@ function HeadingWithFold({
               event.stopPropagation()
             }}
           >
-            {isFolded ? <ChevronRightIcon16 /> : <ChevronDownIcon16 />}
+            {isFolded ? <ChevronLeftIcon16 /> : <ChevronDownIcon16 />}
           </IconButton>
         </div>
       ) : null}

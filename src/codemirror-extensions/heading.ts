@@ -1,53 +1,70 @@
-import { EditorState, Extension, Line, Range, RangeSet, StateField } from "@codemirror/state"
-import { Decoration, DecorationSet, EditorView, GutterMarker, gutter } from "@codemirror/view"
+import { Annotation, EditorState, Extension, Line, Range, StateField } from "@codemirror/state"
+import { Decoration, DecorationSet, EditorView, WidgetType } from "@codemirror/view"
+
+/** Annotation used to mark fold-toggle transactions so the auto-unfold listener skips them. */
+const foldToggle = Annotation.define<boolean>()
 
 const FOLD_COMMENT = "<!-- folded -->"
 const FOLD_COMMENT_RE = /\s*<!--\s*folded\s*-->\s*$/
 
-// ── Gutter marker for fold toggle ──────────────────────────────────
+// ── Right-side heading action widget (fold / unfold) ─────────────
 
-class FoldGutterMarker extends GutterMarker {
+class HeadingActionWidget extends WidgetType {
   constructor(
-    readonly folded: boolean,
-    readonly headingFrom: number,
+    private headingFrom: number,
+    private isFolded: boolean,
   ) {
     super()
   }
 
-  eq(other: FoldGutterMarker) {
-    return this.folded === other.folded && this.headingFrom === other.headingFrom
+  eq(other: HeadingActionWidget) {
+    return this.headingFrom === other.headingFrom && this.isFolded === other.isFolded
   }
 
   toDOM(view: EditorView) {
-    const button = document.createElement("span")
-    button.className = "cm-heading-fold-toggle"
-    button.setAttribute("role", "button")
-    button.setAttribute("aria-label", this.folded ? "Unfold section" : "Fold section")
-    if (this.folded) button.setAttribute("data-folded", "true")
-    button.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L11 8L6 12.5V3.5Z"/></svg>`
+    const btn = document.createElement("span")
+    btn.className = "cm-heading-action"
+    if (this.isFolded) btn.classList.add("cm-heading-action-folded")
+    btn.setAttribute("role", "button")
+    btn.setAttribute("aria-label", this.isFolded ? "Unfold section" : "Fold section")
+
+    // SVG icon: chevron-right when folded, chevron-down when unfolded
+    const chevronPath =
+      "M9.73242 2.20695C10.0321 1.92131 10.5071 1.93284 10.793 2.23234C11.0786 2.53199 11.0671 3.007 10.7676 3.29289L5.83594 7.99992L10.7676 12.707C11.0671 12.9928 11.0786 13.4679 10.793 13.7675C10.5248 14.0484 10.0901 14.0761 9.79004 13.8427L9.73242 13.7929L4.23242 8.54289C4.08416 8.40137 4 8.20488 4 7.99992C4 7.79496 4.08416 7.59847 4.23242 7.45695L9.73242 2.20695Z"
+    // Folded = chevron-left (path as-is), unfolded = chevron-down (rotate -90)
+    const transform = this.isFolded ? "" : ' transform="rotate(-90)" transform-origin="8 8"'
+    btn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">' +
+      `<path d="${chevronPath}"${transform}/>` +
+      "</svg>"
 
     const headingFrom = this.headingFrom
-    button.addEventListener("mousedown", (e) => {
+    const isFolded = this.isFolded
+
+    btn.addEventListener("mousedown", (e) => {
       e.preventDefault()
       e.stopPropagation()
 
-      const state = view.state
-      const line = state.doc.lineAt(headingFrom)
-      const lineText = line.text
-
-      if (FOLD_COMMENT_RE.test(lineText)) {
-        const newText = lineText.replace(FOLD_COMMENT_RE, "")
+      const line = view.state.doc.lineAt(headingFrom)
+      if (isFolded) {
+        const newText = line.text.replace(FOLD_COMMENT_RE, "")
         view.dispatch({
           changes: { from: line.from, to: line.to, insert: newText },
+          annotations: foldToggle.of(true),
         })
       } else {
         view.dispatch({
-          changes: { from: line.to, insert: ` ${FOLD_COMMENT}` },
+          changes: { from: line.to, to: line.to, insert: " " + FOLD_COMMENT },
+          annotations: foldToggle.of(true),
         })
       }
     })
 
-    return button
+    return btn
+  }
+
+  ignoreEvent() {
+    return false
   }
 }
 
@@ -90,9 +107,9 @@ function findFoldEnd(state: EditorState, headingLine: Line, level: number): numb
   return state.doc.length
 }
 
-// ── Line decorations (heading style + fold replace) ────────────────
+// ── Decorations ────────────────────────────────────────────────────
 
-function buildLineDecorations(state: EditorState): DecorationSet {
+function buildDecorations(state: EditorState): DecorationSet {
   const decorations: Range<Decoration>[] = []
   const headings = findHeadings(state)
 
@@ -104,10 +121,11 @@ function buildLineDecorations(state: EditorState): DecorationSet {
       fontSize = "var(--font-size-lg)"
     }
 
+    // Line decoration for heading styling (position: relative for action icon)
     decorations.push(
       Decoration.line({
         attributes: {
-          style: `font-weight: var(--font-weight-bold);${fontSize ? ` font-size: ${fontSize};` : ""}`,
+          style: `font-weight: var(--font-weight-bold); position: relative; padding-right: 2rem;${fontSize ? ` font-size: ${fontSize};` : ""}`,
           "data-heading-level": String(heading.level),
           ...(heading.folded ? { "data-heading-folded": "true" } : {}),
         },
@@ -115,6 +133,23 @@ function buildLineDecorations(state: EditorState): DecorationSet {
     )
 
     if (heading.folded) {
+      const commentMatch = heading.line.text.match(FOLD_COMMENT_RE)
+      if (commentMatch) {
+        const commentStart = heading.line.from + commentMatch.index!
+
+        // Action widget just before the hidden comment
+        decorations.push(
+          Decoration.widget({
+            widget: new HeadingActionWidget(heading.line.from, true),
+            side: -1,
+          }).range(commentStart),
+        )
+
+        // Hide the <!-- folded --> comment
+        decorations.push(Decoration.replace({}).range(commentStart, heading.line.to))
+      }
+
+      // Hide the folded content
       const foldEnd = findFoldEnd(state, heading.line, heading.level)
       if (foldEnd > heading.line.to) {
         decorations.push(
@@ -123,6 +158,14 @@ function buildLineDecorations(state: EditorState): DecorationSet {
           }).range(heading.line.to, foldEnd),
         )
       }
+    } else {
+      // Action widget at end of line for unfolded headings
+      decorations.push(
+        Decoration.widget({
+          widget: new HeadingActionWidget(heading.line.from, false),
+          side: 1,
+        }).range(heading.line.to),
+      )
     }
   }
 
@@ -130,93 +173,90 @@ function buildLineDecorations(state: EditorState): DecorationSet {
   return Decoration.set(decorations)
 }
 
-const lineDecorationField = StateField.define<DecorationSet>({
+const headingField = StateField.define<DecorationSet>({
   create(state) {
-    return buildLineDecorations(state)
+    return buildDecorations(state)
   },
   update(decorations, tr) {
     if (tr.docChanged) {
-      return buildLineDecorations(tr.state)
+      return buildDecorations(tr.state)
     }
     return decorations
   },
   provide: (f) => EditorView.decorations.from(f),
 })
 
-// ── Gutter markers ─────────────────────────────────────────────────
-
-function buildGutterMarkers(state: EditorState): RangeSet<FoldGutterMarker> {
-  const markers: Range<FoldGutterMarker>[] = []
-  const headings = findHeadings(state)
-
-  for (const heading of headings) {
-    markers.push(new FoldGutterMarker(heading.folded, heading.line.from).range(heading.line.from))
-  }
-
-  return RangeSet.of(markers)
-}
-
-const gutterMarkerField = StateField.define<RangeSet<FoldGutterMarker>>({
-  create(state) {
-    return buildGutterMarkers(state)
-  },
-  update(markers, tr) {
-    if (tr.docChanged) {
-      return buildGutterMarkers(tr.state)
-    }
-    return markers
-  },
-})
-
-const foldGutter = gutter({
-  class: "cm-heading-fold-gutter",
-  markers: (view) => view.state.field(gutterMarkerField),
-})
-
 // ── Theme ──────────────────────────────────────────────────────────
 
-const headingFoldTheme = EditorView.baseTheme({
-  ".cm-heading-fold-gutter": {
-    width: "20px",
-    cursor: "default",
-  },
-  ".cm-heading-fold-gutter .cm-gutterElement": {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "0 !important",
-  },
-  ".cm-heading-fold-toggle": {
+const headingTheme = EditorView.baseTheme({
+  ".cm-heading-action": {
+    position: "absolute",
+    right: "0",
+    top: "50%",
+    transform: "translateY(-50%)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "20px",
-    height: "20px",
-    border: "none",
-    background: "none",
-    padding: "0",
-    borderRadius: "var(--border-radius-sm, 3px)",
-    color: "var(--color-text-tertiary, #999)",
-    cursor: "pointer",
-    transition: "color 0.15s",
-  },
-  ".cm-heading-fold-toggle svg": {
-    transition: "transform 0.15s",
-    transform: "rotate(90deg)",
-  },
-  ".cm-heading-fold-toggle[data-folded] svg": {
-    transform: "rotate(0deg)",
-  },
-  ".cm-heading-fold-toggle[data-folded]": {
+    width: "1.5rem",
+    height: "1.5rem",
+    borderRadius: "0.25rem",
     color: "var(--color-text-secondary, #666)",
+    cursor: "pointer",
+    opacity: "0",
+    transition: "opacity 0.15s, background-color 0.15s",
   },
-  ".cm-heading-fold-toggle:hover": {
-    color: "var(--color-text, #333)",
+  ".cm-line:hover .cm-heading-action": {
+    opacity: "1",
   },
+  // Folded icon is always visible
+  ".cm-heading-action-folded": {
+    opacity: "1",
+  },
+  ".cm-heading-action:hover": {
+    backgroundColor: "var(--color-bg-hover, rgba(0,0,0,0.05))",
+  },
+})
+
+// ── Auto-unfold when editing a folded heading ─────────────────────
+
+const autoUnfold = EditorView.updateListener.of((update) => {
+  if (!update.docChanged) return
+
+  // Skip if this change was dispatched by the fold toggle itself
+  for (const tr of update.transactions) {
+    if (tr.annotation(foldToggle)) return
+  }
+
+  // Only auto-unfold headings that were already folded before this edit.
+  // This avoids stripping a fold comment the user just typed.
+  const changes: { from: number; to: number; insert: string }[] = []
+
+  update.changes.iterChangedRanges((fromA, _toA, fromB, toB) => {
+    // Check whether the line in the old doc was already a folded heading
+    const oldLine = update.startState.doc.lineAt(Math.min(fromA, update.startState.doc.length))
+    if (!/^#{1,6}\s/.test(oldLine.text) || !FOLD_COMMENT_RE.test(oldLine.text)) return
+
+    // It was already folded — unfold the corresponding line(s) in the new doc
+    const state = update.state
+    const startLine = state.doc.lineAt(fromB)
+    const endLine = state.doc.lineAt(Math.min(toB, state.doc.length))
+
+    for (let lineNum = startLine.number; lineNum <= endLine.number; lineNum++) {
+      const line = state.doc.line(lineNum)
+      if (/^#{1,6}\s/.test(line.text) && FOLD_COMMENT_RE.test(line.text)) {
+        const newText = line.text.replace(FOLD_COMMENT_RE, "")
+        changes.push({ from: line.from, to: line.to, insert: newText })
+      }
+    }
+  })
+
+  if (changes.length > 0) {
+    update.view.dispatch({ changes })
+  }
 })
 
 // ── Extension ──────────────────────────────────────────────────────
 
 export function headingExtension(): Extension {
-  return [lineDecorationField, gutterMarkerField, foldGutter, headingFoldTheme]
+  return [headingField, autoUnfold, headingTheme]
 }

@@ -58,8 +58,9 @@ import {
   CopyIcon16,
   CutIcon16,
   ErrorIcon16,
+  ChevronDownIcon16,
+  ChevronRightIcon16,
   MoreIcon16,
-  PilcrowIcon16,
   TrashIcon16,
 } from "./icons"
 import { FootnoteRefLink } from "./footnote-ref-link"
@@ -454,7 +455,7 @@ function HeadingWithFold({
               event.stopPropagation()
             }}
           >
-            {isFolded ? <MoreIcon16 /> : <PilcrowIcon16 />}
+            {isFolded ? <ChevronRightIcon16 /> : <ChevronDownIcon16 />}
           </IconButton>
         </div>
       ) : null}

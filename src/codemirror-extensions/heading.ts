@@ -28,18 +28,15 @@ class HeadingActionWidget extends WidgetType {
     btn.setAttribute("role", "button")
     btn.setAttribute("aria-label", this.isFolded ? "Unfold section" : "Fold section")
 
-    // SVG icon: three-dot more icon when folded, pilcrow (¶) when unfolded
-    if (this.isFolded) {
-      btn.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">' +
-        '<path d="M1.5 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM8 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6.5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>' +
-        "</svg>"
-    } else {
-      btn.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">' +
-        '<path d="M6.5 1C4.567 1 3 2.567 3 4.5S4.567 8 6.5 8H7v6.5a.75.75 0 001.5 0V2.5H10v12a.75.75 0 001.5 0V2.5h.75a.75.75 0 000-1.5H6.5zM4.5 4.5a2 2 0 012-2H7v4H6.5a2 2 0 01-2-2z"/>' +
-        "</svg>"
-    }
+    // SVG icon: chevron-right when folded, chevron-down when unfolded
+    const chevronPath =
+      "M9.73242 2.20695C10.0321 1.92131 10.5071 1.93284 10.793 2.23234C11.0786 2.53199 11.0671 3.007 10.7676 3.29289L5.83594 7.99992L10.7676 12.707C11.0671 12.9928 11.0786 13.4679 10.793 13.7675C10.5248 14.0484 10.0901 14.0761 9.79004 13.8427L9.73242 13.7929L4.23242 8.54289C4.08416 8.40137 4 8.20488 4 7.99992C4 7.79496 4.08416 7.59847 4.23242 7.45695L9.73242 2.20695Z"
+    // Folded = chevron-right (mirror chevron-left), unfolded = chevron-down (rotate -90)
+    const transform = this.isFolded ? "scale(-1,1)" : "rotate(-90)"
+    btn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">' +
+      `<g transform="${transform}" transform-origin="8 8"><path d="${chevronPath}"/></g>` +
+      "</svg>"
 
     const headingFrom = this.headingFrom
     const isFolded = this.isFolded

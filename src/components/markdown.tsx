@@ -444,7 +444,11 @@ function HeadingWithFold({
             aria-label={isFolded ? "Unfold section" : "Fold section"}
             tooltipSide="top"
             size="small"
-            className="opacity-0 group-hover/heading:opacity-100 focus-visible:opacity-100 coarse:opacity-100"
+            className={cx(
+              isFolded
+                ? "opacity-100"
+                : "opacity-0 group-hover/heading:opacity-100 focus-visible:opacity-100 coarse:opacity-100",
+            )}
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()

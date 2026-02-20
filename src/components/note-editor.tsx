@@ -32,6 +32,7 @@ import { isSignedOutAtom, tagsAtom, templatesAtom, vimModeAtom } from "../global
 import { useAttachFile } from "../hooks/attach-file"
 import { useSaveNote } from "../hooks/note"
 import { useStableSearchNotes } from "../hooks/search-notes"
+import { InitialSelection } from "../hooks/note-scroll-position"
 import { cx } from "../utils/cx"
 import { useSplitView } from "./app-layout"
 import { formatDate, formatDateDistance } from "../utils/date"
@@ -45,7 +46,7 @@ type NoteEditorProps = {
   minHeight?: number
   editorRef?: React.MutableRefObject<ReactCodeMirrorRef>
   autoFocus?: boolean
-  initialCursorPosition?: number
+  initialSelection?: InitialSelection
   onChange?: (value: string) => void
   onStateChange?: (event: ViewUpdate) => void
   onPaste?: (event: ClipboardEvent, view: EditorView) => void
@@ -98,7 +99,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
       placeholder = "Write something…",
       minHeight,
       autoFocus = false,
-      initialCursorPosition,
+      initialSelection,
       onChange,
       onStateChange,
       onPaste,
@@ -244,11 +245,17 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
           if (autoFocus) {
             view.focus()
             const docLength = view.state.doc.length
-            const pos =
-              initialCursorPosition != null ? Math.min(initialCursorPosition, docLength) : docLength
-            view.dispatch({
-              selection: EditorSelection.cursor(pos),
-            })
+            if (initialSelection != null) {
+              const anchor = Math.min(initialSelection.anchor, docLength)
+              const head = Math.min(initialSelection.head, docLength)
+              view.dispatch({
+                selection: EditorSelection.range(anchor, head),
+              })
+            } else {
+              view.dispatch({
+                selection: EditorSelection.cursor(docLength),
+              })
+            }
           }
         }}
         onUpdate={onStateChange}

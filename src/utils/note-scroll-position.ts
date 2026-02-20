@@ -4,7 +4,8 @@ const STORAGE_KEY_PREFIX = "note-scroll:"
 
 type NoteScrollState = {
   scrollTop: number
-  cursorPosition: number
+  selectionAnchor: number
+  selectionHead: number
 }
 
 export function getNoteScrollPosition(noteId: NoteId): NoteScrollState | null {

@@ -176,8 +176,8 @@ function NotePage() {
   )
   const [isDraggingFile, setIsDraggingFile] = React.useState(false)
 
-  // Scroll/cursor position persistence
-  const initialCursorPosition = useNoteScrollPosition(noteId, scrollContainer, editorRef)
+  // Scroll/selection position persistence
+  const initialSelection = useNoteScrollPosition(noteId, scrollContainer, editorRef)
 
   // Heading navigation
   const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
@@ -918,7 +918,7 @@ function NotePage() {
                 defaultValue={editorValue}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
-                initialCursorPosition={initialCursorPosition}
+                initialSelection={initialSelection}
                 onChange={setEditorValue}
                 minHeight={160}
               />

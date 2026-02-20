@@ -48,7 +48,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
 
   const parsedNote = React.useMemo(() => parseNote(noteId, editorValue), [noteId, editorValue])
 
-  const initialCursorPosition = useNoteScrollPosition(noteId, scrollContainer, editorRef)
+  const initialSelection = useNoteScrollPosition(noteId, scrollContainer, editorRef)
 
   const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
     scrollContainer,
@@ -245,7 +245,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
                   defaultValue={editorValue}
                   // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
-                  initialCursorPosition={initialCursorPosition}
+                  initialSelection={initialSelection}
                   onChange={setEditorValue}
                   onNavigate={onNavigate}
                   minHeight={160}

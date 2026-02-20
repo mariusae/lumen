@@ -3,19 +3,24 @@ import React from "react"
 import { NoteId } from "../schema"
 import { getNoteScrollPosition, saveNoteScrollPosition } from "../utils/note-scroll-position"
 
+export type InitialSelection = {
+  anchor: number
+  head: number
+}
+
 /**
- * Saves and restores scroll position and editor cursor position for a note.
+ * Saves and restores scroll position and editor selection for a note.
  *
  * Expects the parent component to use `key={noteId}` so that the hook
  * remounts (and thus saves/restores) whenever the note changes.
  *
- * Returns the initial cursor position to pass to NoteEditor.
+ * Returns the initial selection (anchor + head) to pass to NoteEditor.
  */
 export function useNoteScrollPosition(
   noteId: NoteId | undefined,
   scrollContainer: HTMLElement | null,
   editorRef: React.RefObject<ReactCodeMirrorRef | null>,
-): number | undefined {
+): InitialSelection | undefined {
   // Read saved state on mount (stable because parent uses key={noteId})
   const savedState = React.useMemo(() => (noteId ? getNoteScrollPosition(noteId) : null), [noteId])
 
@@ -27,10 +32,11 @@ export function useNoteScrollPosition(
     const id = noteId
     return () => {
       if (!id) return
-      const cursorPosition = editorRef.current?.view?.state.selection.main.head ?? 0
+      const selection = editorRef.current?.view?.state.selection.main
       saveNoteScrollPosition(id, {
         scrollTop: scrollTopRef.current,
-        cursorPosition,
+        selectionAnchor: selection?.anchor ?? 0,
+        selectionHead: selection?.head ?? 0,
       })
     }
   }, [noteId, editorRef])
@@ -56,5 +62,7 @@ export function useNoteScrollPosition(
     })
   }, [scrollContainer, savedState])
 
-  return savedState?.cursorPosition
+  return savedState
+    ? { anchor: savedState.selectionAnchor, head: savedState.selectionHead }
+    : undefined
 }

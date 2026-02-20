@@ -1,5 +1,4 @@
 import { EditorSelection } from "@codemirror/state"
-import { EditorView } from "@codemirror/view"
 import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import React from "react"
 import { NoteId } from "../schema"
@@ -60,6 +59,9 @@ export function useNoteScrollPosition(
   // Restore editor selection after the editor has settled.
   // We use requestAnimationFrame to ensure the editor has finished
   // syncing its value prop before we set the selection.
+  // Note: We must NOT use EditorView.scrollIntoView here because it walks
+  // up the DOM tree and scrolls the page layout container, overriding the
+  // scroll restoration above. The scroll container restoration handles scrolling.
   const selectionRestoredRef = React.useRef(false)
   React.useEffect(() => {
     if (!savedState || selectionRestoredRef.current) return
@@ -69,16 +71,16 @@ export function useNoteScrollPosition(
 
     requestAnimationFrame(() => {
       if (selectionRestoredRef.current) return
-      selectionRestoredRef.current = true
 
       const docLength = view.state.doc.length
       if (docLength === 0) return
+
+      selectionRestoredRef.current = true
 
       const anchor = Math.min(savedState.selectionAnchor, docLength)
       const head = Math.min(savedState.selectionHead, docLength)
       view.dispatch({
         selection: EditorSelection.range(anchor, head),
-        effects: EditorView.scrollIntoView(head, { y: "center" }),
       })
     })
   })

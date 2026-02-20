@@ -11,7 +11,7 @@ export function getNoteScrollPosition(noteId: NoteId): NoteScrollState | null {
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${noteId}`)
     if (!raw) return null
-    return JSON.parse(raw)
+    return JSON.parse(raw) as NoteScrollState
   } catch {
     return null
   }

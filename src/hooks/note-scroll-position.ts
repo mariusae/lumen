@@ -1,39 +1,57 @@
-import { EditorSelection } from "@codemirror/state"
-import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
+import { ViewUpdate } from "@codemirror/view"
 import React from "react"
 import { NoteId } from "../schema"
 import { getNoteScrollPosition, saveNoteScrollPosition } from "../utils/note-scroll-position"
+
+export type InitialSelection = {
+  anchor: number
+  head: number
+}
 
 /**
  * Saves and restores scroll position and editor selection for a note.
  *
  * Expects the parent component to use `key={noteId}` so that the hook
  * remounts (and thus saves/restores) whenever the note changes.
+ *
+ * Returns `initialSelection` to pass to NoteEditor and `onEditorUpdate`
+ * to pass as `onStateChange` so the hook can track the current selection.
  */
 export function useNoteScrollPosition(
   noteId: NoteId | undefined,
   scrollContainer: HTMLElement | null,
-  editorRef: React.RefObject<ReactCodeMirrorRef | null>,
-): void {
+): {
+  initialSelection: InitialSelection | undefined
+  onEditorUpdate: (update: ViewUpdate) => void
+} {
   // Read saved state on mount (stable because parent uses key={noteId})
   const savedState = React.useMemo(() => (noteId ? getNoteScrollPosition(noteId) : null), [noteId])
 
   // Track latest scroll position via ref to avoid re-renders
   const scrollTopRef = React.useRef(0)
 
+  // Track latest editor selection via ref, updated by onEditorUpdate callback.
+  // We can't read from editorRef during unmount because useImperativeHandle
+  // clears the ref (layout cleanup) before our useEffect cleanup runs.
+  const selectionRef = React.useRef({ anchor: 0, head: 0 })
+
+  const onEditorUpdate = React.useCallback((update: ViewUpdate) => {
+    const sel = update.state.selection.main
+    selectionRef.current = { anchor: sel.anchor, head: sel.head }
+  }, [])
+
   // Save state on unmount
   React.useEffect(() => {
     const id = noteId
     return () => {
       if (!id) return
-      const selection = editorRef.current?.view?.state.selection.main
       saveNoteScrollPosition(id, {
         scrollTop: scrollTopRef.current,
-        selectionAnchor: selection?.anchor ?? 0,
-        selectionHead: selection?.head ?? 0,
+        selectionAnchor: selectionRef.current.anchor,
+        selectionHead: selectionRef.current.head,
       })
     }
-  }, [noteId, editorRef])
+  }, [noteId])
 
   // Track scroll position
   React.useEffect(() => {
@@ -56,32 +74,13 @@ export function useNoteScrollPosition(
     })
   }, [scrollContainer, savedState])
 
-  // Restore editor selection after the editor has settled.
-  // We use requestAnimationFrame to ensure the editor has finished
-  // syncing its value prop before we set the selection.
-  // Note: We must NOT use EditorView.scrollIntoView here because it walks
-  // up the DOM tree and scrolls the page layout container, overriding the
-  // scroll restoration above. The scroll container restoration handles scrolling.
-  const selectionRestoredRef = React.useRef(false)
-  React.useEffect(() => {
-    if (!savedState || selectionRestoredRef.current) return
+  const initialSelection = React.useMemo(
+    () =>
+      savedState
+        ? { anchor: savedState.selectionAnchor, head: savedState.selectionHead }
+        : undefined,
+    [savedState],
+  )
 
-    const view = editorRef.current?.view
-    if (!view) return
-
-    requestAnimationFrame(() => {
-      if (selectionRestoredRef.current) return
-
-      const docLength = view.state.doc.length
-      if (docLength === 0) return
-
-      selectionRestoredRef.current = true
-
-      const anchor = Math.min(savedState.selectionAnchor, docLength)
-      const head = Math.min(savedState.selectionHead, docLength)
-      view.dispatch({
-        selection: EditorSelection.range(anchor, head),
-      })
-    })
-  })
+  return { initialSelection, onEditorUpdate }
 }

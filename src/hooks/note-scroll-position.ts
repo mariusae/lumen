@@ -1,26 +1,21 @@
+import { EditorSelection } from "@codemirror/state"
+import { EditorView } from "@codemirror/view"
 import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import React from "react"
 import { NoteId } from "../schema"
 import { getNoteScrollPosition, saveNoteScrollPosition } from "../utils/note-scroll-position"
-
-export type InitialSelection = {
-  anchor: number
-  head: number
-}
 
 /**
  * Saves and restores scroll position and editor selection for a note.
  *
  * Expects the parent component to use `key={noteId}` so that the hook
  * remounts (and thus saves/restores) whenever the note changes.
- *
- * Returns the initial selection (anchor + head) to pass to NoteEditor.
  */
 export function useNoteScrollPosition(
   noteId: NoteId | undefined,
   scrollContainer: HTMLElement | null,
   editorRef: React.RefObject<ReactCodeMirrorRef | null>,
-): InitialSelection | undefined {
+): void {
   // Read saved state on mount (stable because parent uses key={noteId})
   const savedState = React.useMemo(() => (noteId ? getNoteScrollPosition(noteId) : null), [noteId])
 
@@ -62,7 +57,29 @@ export function useNoteScrollPosition(
     })
   }, [scrollContainer, savedState])
 
-  return savedState
-    ? { anchor: savedState.selectionAnchor, head: savedState.selectionHead }
-    : undefined
+  // Restore editor selection after the editor has settled.
+  // We use requestAnimationFrame to ensure the editor has finished
+  // syncing its value prop before we set the selection.
+  const selectionRestoredRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!savedState || selectionRestoredRef.current) return
+
+    const view = editorRef.current?.view
+    if (!view) return
+
+    requestAnimationFrame(() => {
+      if (selectionRestoredRef.current) return
+      selectionRestoredRef.current = true
+
+      const docLength = view.state.doc.length
+      if (docLength === 0) return
+
+      const anchor = Math.min(savedState.selectionAnchor, docLength)
+      const head = Math.min(savedState.selectionHead, docLength)
+      view.dispatch({
+        selection: EditorSelection.range(anchor, head),
+        effects: EditorView.scrollIntoView(head, { y: "center" }),
+      })
+    })
+  })
 }

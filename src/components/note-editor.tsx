@@ -45,6 +45,7 @@ type NoteEditorProps = {
   minHeight?: number
   editorRef?: React.MutableRefObject<ReactCodeMirrorRef>
   autoFocus?: boolean
+  initialCursorPosition?: number
   onChange?: (value: string) => void
   onStateChange?: (event: ViewUpdate) => void
   onPaste?: (event: ClipboardEvent, view: EditorView) => void
@@ -97,6 +98,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
       placeholder = "Write something…",
       minHeight,
       autoFocus = false,
+      initialCursorPosition,
       onChange,
       onStateChange,
       onPaste,
@@ -240,11 +242,12 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
         }}
         onCreateEditor={(view) => {
           if (autoFocus) {
-            // Focus the editor
             view.focus()
-            // Move cursor to end of document
+            const docLength = view.state.doc.length
+            const pos =
+              initialCursorPosition != null ? Math.min(initialCursorPosition, docLength) : docLength
             view.dispatch({
-              selection: EditorSelection.cursor(view.state.doc.sliceString(0).length),
+              selection: EditorSelection.cursor(pos),
             })
           }
         }}

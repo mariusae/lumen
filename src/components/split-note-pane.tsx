@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai"
 import React from "react"
 import { githubRepoAtom, isSignedOutAtom } from "../global-state"
 import { useActiveHeading } from "../hooks/active-heading"
+import { useNoteScrollPosition } from "../hooks/note-scroll-position"
 import { useEditorValue } from "../hooks/editor-value"
 import { useNoteById, useSaveNote } from "../hooks/note"
 import { NoteId } from "../schema"
@@ -46,6 +47,8 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
   const [scrollContainer, setScrollContainer] = React.useState<HTMLDivElement | null>(null)
 
   const parsedNote = React.useMemo(() => parseNote(noteId, editorValue), [noteId, editorValue])
+
+  const initialCursorPosition = useNoteScrollPosition(noteId, scrollContainer, editorRef)
 
   const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
     scrollContainer,
@@ -242,6 +245,7 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
                   defaultValue={editorValue}
                   // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
+                  initialCursorPosition={initialCursorPosition}
                   onChange={setEditorValue}
                   onNavigate={onNavigate}
                   minHeight={160}

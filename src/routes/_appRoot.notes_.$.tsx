@@ -59,6 +59,7 @@ import {
   weeklyTemplateAtom,
 } from "../global-state"
 import { useActiveHeading } from "../hooks/active-heading"
+import { useNoteScrollPosition } from "../hooks/note-scroll-position"
 import { useAttachFile } from "../hooks/attach-file"
 import { useEditorValue } from "../hooks/editor-value"
 import { useDeleteNote, useNoteById, useRenameNote, useSaveNote } from "../hooks/note"
@@ -174,6 +175,9 @@ function NotePage() {
     [noteId, editorValue],
   )
   const [isDraggingFile, setIsDraggingFile] = React.useState(false)
+
+  // Scroll/cursor position persistence
+  const initialCursorPosition = useNoteScrollPosition(noteId, scrollContainer, editorRef)
 
   // Heading navigation
   const { headings, activeHeadingIndex, scrollToHeading } = useActiveHeading(
@@ -914,6 +918,7 @@ function NotePage() {
                 defaultValue={editorValue}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
+                initialCursorPosition={initialCursorPosition}
                 onChange={setEditorValue}
                 minHeight={160}
               />

@@ -250,6 +250,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
               const head = Math.min(initialSelection.head, docLength)
               view.dispatch({
                 selection: EditorSelection.range(anchor, head),
+                effects: EditorView.scrollIntoView(head, { y: "center" }),
               })
             } else {
               view.dispatch({

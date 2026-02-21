@@ -22,6 +22,10 @@ class HeadingActionWidget extends WidgetType {
   }
 
   toDOM(view: EditorView) {
+    // Zero-width wrapper so CodeMirror doesn't shift the cursor
+    const wrapper = document.createElement("span")
+    wrapper.className = "cm-heading-action-wrapper"
+
     const btn = document.createElement("span")
     btn.className = "cm-heading-action"
     if (this.isFolded) btn.classList.add("cm-heading-action-folded")
@@ -60,7 +64,8 @@ class HeadingActionWidget extends WidgetType {
       }
     })
 
-    return btn
+    wrapper.appendChild(btn)
+    return wrapper
   }
 
   ignoreEvent() {
@@ -189,6 +194,11 @@ const headingField = StateField.define<DecorationSet>({
 // ── Theme ──────────────────────────────────────────────────────────
 
 const headingTheme = EditorView.baseTheme({
+  ".cm-heading-action-wrapper": {
+    display: "inline",
+    width: "0",
+    overflow: "visible",
+  },
   ".cm-heading-action": {
     position: "absolute",
     right: "0",

@@ -1,5 +1,6 @@
 import { Annotation, EditorState, Extension, Line, Range, StateField } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView, WidgetType } from "@codemirror/view"
+import { findCodeBlockRanges, isInCodeBlock } from "./code-block"
 
 /** Annotation used to mark fold-toggle transactions so the auto-unfold listener skips them. */
 const foldToggle = Annotation.define<boolean>()
@@ -83,8 +84,10 @@ interface HeadingInfo {
 
 function findHeadings(state: EditorState): HeadingInfo[] {
   const headings: HeadingInfo[] = []
+  const codeBlockRanges = findCodeBlockRanges(state)
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
+    if (isInCodeBlock(line.from, codeBlockRanges)) continue
     const match = line.text.match(/^(#{1,6})\s/)
     if (match) {
       headings.push({
@@ -99,13 +102,16 @@ function findHeadings(state: EditorState): HeadingInfo[] {
 
 /** Find the end position (exclusive) of a folded section. */
 function findFoldEnd(state: EditorState, headingLine: Line, level: number): number {
+  const codeBlockRanges = findCodeBlockRanges(state)
   let lineNum = headingLine.number + 1
   const totalLines = state.doc.lines
   while (lineNum <= totalLines) {
     const line = state.doc.line(lineNum)
-    const match = line.text.match(/^(#{1,6})\s/)
-    if (match && match[1].length <= level) {
-      return line.from - 1
+    if (!isInCodeBlock(line.from, codeBlockRanges)) {
+      const match = line.text.match(/^(#{1,6})\s/)
+      if (match && match[1].length <= level) {
+        return line.from - 1
+      }
     }
     lineNum++
   }
@@ -241,9 +247,13 @@ const autoUnfold = EditorView.updateListener.of((update) => {
   // This avoids stripping a fold comment the user just typed.
   const changes: { from: number; to: number; insert: string }[] = []
 
+  const oldCodeBlockRanges = findCodeBlockRanges(update.startState)
+  const newCodeBlockRanges = findCodeBlockRanges(update.state)
+
   update.changes.iterChangedRanges((fromA, _toA, fromB, toB) => {
     // Check whether the line in the old doc was already a folded heading
     const oldLine = update.startState.doc.lineAt(Math.min(fromA, update.startState.doc.length))
+    if (isInCodeBlock(oldLine.from, oldCodeBlockRanges)) return
     if (!/^#{1,6}\s/.test(oldLine.text) || !FOLD_COMMENT_RE.test(oldLine.text)) return
 
     // It was already folded — unfold the corresponding line(s) in the new doc
@@ -253,6 +263,7 @@ const autoUnfold = EditorView.updateListener.of((update) => {
 
     for (let lineNum = startLine.number; lineNum <= endLine.number; lineNum++) {
       const line = state.doc.line(lineNum)
+      if (isInCodeBlock(line.from, newCodeBlockRanges)) continue
       if (/^#{1,6}\s/.test(line.text) && FOLD_COMMENT_RE.test(line.text)) {
         const newText = line.text.replace(FOLD_COMMENT_RE, "")
         changes.push({ from: line.from, to: line.to, insert: newText })

@@ -120,6 +120,10 @@
   @apply cursor-pointer decoration-solid ring-0;
 }
 
+.cm-editor .cm-code-block {
+  @apply bg-bg-tertiary;
+}
+
 .cm-editor .cm-highlight {
   @apply rounded-sm bg-[var(--color-bg-highlight)];
 }

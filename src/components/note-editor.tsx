@@ -19,6 +19,7 @@ import { vim } from "@replit/codemirror-vim"
 import { useNavigate } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import React from "react"
+import { codeBlockExtension } from "../codemirror-extensions/code-block"
 import { frontmatterExtension } from "../codemirror-extensions/frontmatter"
 import { ellipsisExtension } from "../codemirror-extensions/ellipsis"
 import { headingExtension } from "../codemirror-extensions/heading"
@@ -176,6 +177,7 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
         spellcheckExtension(),
         pasteExtension({ attachFile, onPaste }),
         indentedLineWrapExtension(),
+        codeBlockExtension(),
         headingExtension(),
         highlightExtension(),
         priorityExtension(),

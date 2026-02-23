@@ -1,5 +1,6 @@
 import { EditorState, Extension, Range, StateField } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView, WidgetType } from "@codemirror/view"
+import { findCodeBlockRanges, isInCodeBlock } from "./code-block"
 
 function createWikilinkField(navigate: (id: string, openInSplitView: boolean) => void) {
   return StateField.define<DecorationSet>({
@@ -25,9 +26,11 @@ function createDecorations(
 ) {
   const decorations: Range<Decoration>[] = []
   const { from, to } = state.selection.main
+  const codeBlockRanges = findCodeBlockRanges(state)
 
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
+    if (isInCodeBlock(line.from, codeBlockRanges)) continue
     let match: RegExpExecArray | null
 
     while ((match = wikilinkRegex.exec(line.text)) !== null) {

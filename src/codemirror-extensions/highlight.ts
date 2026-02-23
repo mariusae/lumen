@@ -1,5 +1,6 @@
 import { EditorState, Extension, Range, StateField, Transaction } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view"
+import { findCodeBlockRanges, isInCodeBlock } from "./code-block"
 
 const HIGHLIGHT_REGEX = /==((?:[^=]|=[^=])+?)==/g
 
@@ -21,9 +22,11 @@ const highlightField = StateField.define({
 
 function createDecorations(state: EditorState) {
   const decorations: Range<Decoration>[] = []
+  const codeBlockRanges = findCodeBlockRanges(state)
 
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
+    if (isInCodeBlock(line.from, codeBlockRanges)) continue
     const regex = new RegExp(HIGHLIGHT_REGEX.source, "g")
     let match
 

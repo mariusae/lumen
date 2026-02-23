@@ -1,5 +1,6 @@
 import { EditorState, Extension, Range, StateField, Transaction } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view"
+import { findCodeBlockRanges, isInCodeBlock } from "./code-block"
 
 const priorityClasses: Record<1 | 2 | 3, string> = {
   1: "cm-priority cm-priority-1",
@@ -22,11 +23,13 @@ const priorityField = StateField.define({
 
 function createDecorations(state: EditorState): DecorationSet {
   const decorations: Range<Decoration>[] = []
+  const codeBlockRanges = findCodeBlockRanges(state)
   const text = state.doc.toString()
   const regex = /!!([123])/g
   let match
 
   while ((match = regex.exec(text)) !== null) {
+    if (isInCodeBlock(match.index, codeBlockRanges)) continue
     const level = parseInt(match[1]) as 1 | 2 | 3
     const from = match.index
     const to = from + match[0].length

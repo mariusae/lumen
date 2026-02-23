@@ -3,6 +3,7 @@
 | Action              | Shortcut                  |
 | ------------------- | ------------------------- |
 | Toggle command menu | <kbd>⌘</kbd> <kbd>K</kbd> |
+| Go to today's note  | <kbd>⌘</kbd> <kbd>D</kbd> |
 | Create new note     | <kbd>⌘</kbd> <kbd>I</kbd> |
 
 **With focus inside a note card...**

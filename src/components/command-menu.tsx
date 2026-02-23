@@ -130,6 +130,29 @@ export function CommandMenu() {
     enableOnContentEditable: true,
   })
 
+  // Navigate to today's note with Cmd+D
+  useHotkeys(
+    "meta+d",
+    () => {
+      navigate({
+        to: "/notes/$",
+        params: {
+          _splat: toDateString(new Date()),
+        },
+        search: {
+          mode: getHasDailyNote() ? "read" : "write",
+          query: undefined,
+          view: "grid",
+        },
+      })
+    },
+    {
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+    },
+  )
+
   const navItems = useMemo(() => {
     return [
       {

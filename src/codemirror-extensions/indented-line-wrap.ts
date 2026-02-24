@@ -1,5 +1,6 @@
 import { EditorState, Extension, Line, Range, StateField, Transaction } from "@codemirror/state"
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view"
+import { findCodeBlockRanges, isInCodeBlock } from "./code-block"
 
 // Reference: https://discuss.codemirror.net/t/making-codemirror-6-respect-indent-for-wrapped-lines/2881/8
 
@@ -18,9 +19,11 @@ const indentedLineWrapField = StateField.define({
 
 function createDecorations(state: EditorState) {
   const decorations: Range<Decoration>[] = []
+  const codeBlockRanges = findCodeBlockRanges(state)
 
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
+    if (isInCodeBlock(line.from, codeBlockRanges)) continue
     const lineDecoration = getLineDecoration(line)
 
     if (lineDecoration) {
@@ -40,44 +43,8 @@ function createDecorations(state: EditorState) {
  * 4. It reduces overall processing, especially for large documents with small changes.
  */
 function updateDecorations(oldDecorations: DecorationSet, tr: Transaction): DecorationSet {
-  const decorations: Range<Decoration>[] = []
-
-  // Iterate through existing decorations and update their positions
-  oldDecorations.between(0, tr.newDoc.length, (from, to, decoration) => {
-    const newFrom = tr.changes.mapPos(from)
-    const newTo = tr.changes.mapPos(to)
-    if (tr.changes.touchesRange(from, to)) {
-      // If the range was affected by the changes, recalculate the decoration
-      const line = tr.newDoc.lineAt(newFrom)
-      const newDecoration = getLineDecoration(line)
-      if (newDecoration) {
-        decorations.push(newDecoration.range(newFrom, newTo))
-      }
-    } else {
-      // If the range wasn't affected, keep the existing decoration
-      decorations.push(decoration.range(newFrom, newTo))
-    }
-  })
-
-  // Process newly changed ranges
-  tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
-    let posB = fromB
-    while (posB <= toB) {
-      // For each line in the changed range, check if it needs a decoration
-      const line = tr.newDoc.lineAt(posB)
-      const decoration = getLineDecoration(line)
-      if (decoration) {
-        decorations.push(decoration.range(line.from))
-      }
-      posB = line.to + 1
-    }
-  })
-
-  // Sort decorations by 'from' position
-  decorations.sort((a, b) => a.from - b.from)
-
-  // Return the sorted decorations as a DecorationSet
-  return Decoration.set(decorations)
+  // Code block boundaries may shift on any edit, so rebuild from scratch
+  return createDecorations(tr.state)
 }
 
 /** Returns a line decoration for indented line wrapping. */

@@ -2,10 +2,10 @@ import { useNavigate } from "@tanstack/react-router"
 import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import { useAtomValue } from "jotai"
 import React from "react"
-import { githubRepoAtom, isSignedOutAtom } from "../global-state"
+import { defaultFontAtom, githubRepoAtom, isSignedOutAtom } from "../global-state"
 import { useEditorValue } from "../hooks/editor-value"
 import { useNoteById, useSaveNote } from "../hooks/note"
-import { NoteId } from "../schema"
+import { fontSchema, NoteId } from "../schema"
 import { clearNoteDraft } from "../utils/note-draft"
 import { parseNote } from "../utils/parse-note"
 import { Button } from "./button"
@@ -42,6 +42,14 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
   const [mode, setMode] = React.useState<"read" | "write">("read")
 
   const parsedNote = React.useMemo(() => parseNote(noteId, editorValue), [noteId, editorValue])
+
+  const defaultFont = useAtomValue(defaultFontAtom)
+  const resolvedFont = React.useMemo(() => {
+    const frontmatterFont = parsedNote?.frontmatter?.font as unknown
+    const parseResult = fontSchema.safeParse(frontmatterFont)
+    const parsedFont = parseResult.success ? parseResult.data : null
+    return parsedFont || defaultFont
+  }, [parsedNote?.frontmatter?.font, defaultFont])
 
   const handleSave = React.useCallback(
     (value: string) => {
@@ -183,7 +191,15 @@ export function SplitNotePane({ noteId, onClose, onNavigate }: SplitNotePaneProp
         </div>
 
         {/* Content */}
-        <div className="@container min-h-0 flex-1 overflow-auto">
+        <div
+          className="@container min-h-0 flex-1 overflow-auto"
+          style={
+            {
+              "--font-family-content": `var(--font-family-${resolvedFont})`,
+              "--font-family-mono": `var(--font-family-${resolvedFont}-mono)`,
+            } as React.CSSProperties
+          }
+        >
           <div className="p-5 @[640px]:p-10">
             <div className="mx-auto flex max-w-[700px] flex-col gap-8">
               {mode === "read" && (

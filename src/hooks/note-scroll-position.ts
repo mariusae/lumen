@@ -1,3 +1,4 @@
+import { EditorSelection, Transaction } from "@codemirror/state"
 import { ViewUpdate } from "@codemirror/view"
 import React from "react"
 import { NoteId } from "../schema"
@@ -36,6 +37,27 @@ export function useNoteScrollPosition(
   const selectionRef = React.useRef({ anchor: 0, head: 0 })
 
   const onEditorUpdate = React.useCallback((update: ViewUpdate) => {
+    if (update.docChanged) {
+      // Detect external (non-user) document changes, e.g. when saveNote adds
+      // an updated_at timestamp and CodeMirror's value reconciliation does a
+      // full document replace. Such replaces map the cursor to the end.
+      // Restore the previous selection position instead.
+      const isExternalChange = update.transactions.some(
+        (tr) => tr.docChanged && !tr.annotation(Transaction.userEvent),
+      )
+      if (isExternalChange) {
+        const docLength = update.state.doc.length
+        const anchor = Math.min(selectionRef.current.anchor, docLength)
+        const head = Math.min(selectionRef.current.head, docLength)
+        setTimeout(() => {
+          update.view.dispatch({
+            selection: EditorSelection.range(anchor, head),
+          })
+        }, 0)
+        return
+      }
+    }
+
     const sel = update.state.selection.main
     selectionRef.current = { anchor: sel.anchor, head: sel.head }
   }, [])

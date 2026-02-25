@@ -24,6 +24,7 @@ import {
 import { useRemoteSyncPoller } from "../hooks/remote-sync-poller"
 import { useSearchNotes } from "../hooks/search-notes"
 import { useValueRef } from "../hooks/value-ref"
+import { isNativeApp, nativeBeginBackgroundSync, nativeSaveState } from "../utils/native-bridge"
 import { flushPendingDrafts } from "../utils/note-draft"
 import { generateNoteId } from "../utils/note-id"
 import { requestPersistentStorage } from "../utils/persistent-storage"
@@ -78,7 +79,10 @@ function RouteComponent() {
       send("SYNC")
     } else if (document.visibilityState === "hidden") {
       saveSessionUrl()
+      nativeSaveState(window.location.pathname + window.location.search)
       flushPendingDrafts()
+      // In the native app, request extra background time to finish any sync
+      nativeBeginBackgroundSync()
     }
   })
 
@@ -93,6 +97,16 @@ function RouteComponent() {
   useEvent("online", () => {
     send("SYNC")
   })
+
+  // Native app dispatches this event during BGAppRefreshTask to trigger a sync
+  // while the app is in the background
+  React.useEffect(() => {
+    if (!isNativeApp) return
+
+    const handler = () => send("SYNC")
+    window.addEventListener("lumenbackgroundsync", handler)
+    return () => window.removeEventListener("lumenbackgroundsync", handler)
+  }, [send])
 
   // Poll GitHub API to detect remote pushes
   useRemoteSyncPoller()

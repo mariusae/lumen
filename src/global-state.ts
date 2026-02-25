@@ -30,6 +30,7 @@ import {
 import { parseNote } from "./utils/parse-note"
 import { removeTemplateFrontmatter } from "./utils/remove-template-frontmatter"
 import { getSampleMarkdownFiles } from "./utils/sample-markdown-files"
+import { clearSessionUrl } from "./utils/session-state"
 import { startTimer } from "./utils/timer"
 
 // -----------------------------------------------------------------------------
@@ -124,6 +125,7 @@ function createGlobalStateMachine() {
             "clearGitHubUserLocalStorage",
             "clearMarkdownFilesLocalStorage",
             "clearFileSystem",
+            "clearSessionUrl",
             "setSampleMarkdownFiles",
           ],
           exit: ["clearMarkdownFiles"],
@@ -498,6 +500,9 @@ function createGlobalStateMachine() {
         }),
         clearFileSystem: () => {
           fsWipe()
+        },
+        clearSessionUrl: () => {
+          clearSessionUrl()
         },
         setMarkdownFiles: assign({
           markdownFiles: (_, event) => event.data.markdownFiles,

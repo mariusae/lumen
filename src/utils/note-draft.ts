@@ -4,8 +4,11 @@ const DRAFT_PREFIX = "draft" as const
 const DRAFT_DEBOUNCE_MS = 500
 
 // Keep track of pending debounced writes per storage key so we can
-// coalesce rapid updates and cancel when clearing a draft
+// coalesce rapid updates and cancel when clearing a draft.
+// We also store the pending value so it can be flushed immediately
+// when the page goes hidden (e.g., iOS killing the PWA).
 const draftWriteTimers = new Map<string, number>()
+const draftPendingValues = new Map<string, string>()
 
 function getNoteStorageKey({
   githubRepo,
@@ -64,7 +67,11 @@ export function setNoteDraft({
     if (immediate) {
       // Write immediately without debounce
       window.localStorage.setItem(key, value)
+      draftPendingValues.delete(key)
     } else {
+      // Track the pending value so flushPendingDrafts() can write it
+      draftPendingValues.set(key, value)
+
       // Debounce writes to reduce pressure on localStorage
       const timeoutId = window.setTimeout(() => {
         try {
@@ -73,6 +80,7 @@ export function setNoteDraft({
           // Ignore storage errors (e.g., private mode restrictions)
         } finally {
           draftWriteTimers.delete(key)
+          draftPendingValues.delete(key)
         }
       }, DRAFT_DEBOUNCE_MS)
       draftWriteTimers.set(key, timeoutId)
@@ -104,4 +112,26 @@ export function clearNoteDraft({
   } catch {
     // Ignore storage errors (e.g., private mode restrictions)
   }
+}
+
+/** Immediately write all pending debounced drafts to localStorage.
+ *  Call this on visibilitychange:hidden — it's the last chance to save
+ *  before iOS kills the PWA process. */
+export function flushPendingDrafts() {
+  for (const [key, value] of draftPendingValues) {
+    // Cancel the pending timer
+    const timerId = draftWriteTimers.get(key)
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId)
+      draftWriteTimers.delete(key)
+    }
+
+    // Write immediately
+    try {
+      window.localStorage.setItem(key, value)
+    } catch {
+      // Ignore storage errors
+    }
+  }
+  draftPendingValues.clear()
 }

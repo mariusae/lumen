@@ -16,6 +16,7 @@ import {
 import {
   epaperAtom,
   globalStateMachineAtom,
+  isRepoClonedAtom,
   notesAtom,
   tagsAtom,
   templatesAtom,
@@ -23,7 +24,10 @@ import {
 import { useRemoteSyncPoller } from "../hooks/remote-sync-poller"
 import { useSearchNotes } from "../hooks/search-notes"
 import { useValueRef } from "../hooks/value-ref"
+import { flushPendingDrafts } from "../utils/note-draft"
 import { generateNoteId } from "../utils/note-id"
+import { requestPersistentStorage } from "../utils/persistent-storage"
+import { saveSessionUrl } from "../utils/session-state"
 import { notificationSound, playSound } from "../utils/sounds"
 
 export const Route = createFileRoute("/_appRoot")({
@@ -54,12 +58,37 @@ function RouteComponent() {
   const { online } = useNetworkState()
   const rootRef = React.useRef<HTMLDivElement>(null)
 
-  // Sync when the app becomes visible again
+  // Save session URL on every navigation so we can restore it after iOS kills the PWA
+  React.useEffect(() => {
+    // Save the initial URL
+    saveSessionUrl()
+
+    const unsubscribeNav = router.subscribe("onRendered", () => {
+      saveSessionUrl()
+    })
+
+    return () => unsubscribeNav()
+  }, [router])
+
+  // Sync when the app becomes visible again, and flush drafts when going to background.
+  // iOS fires visibilitychange:hidden right before killing a PWA process — this is
+  // the last chance to persist any unsaved state.
   useEvent("visibilitychange", () => {
     if (document.visibilityState === "visible" && online) {
       send("SYNC")
+    } else if (document.visibilityState === "hidden") {
+      saveSessionUrl()
+      flushPendingDrafts()
     }
   })
+
+  // Request persistent storage to prevent iOS from evicting IndexedDB/localStorage
+  const isRepoCloned = useAtomValue(isRepoClonedAtom)
+  React.useEffect(() => {
+    if (isRepoCloned) {
+      requestPersistentStorage()
+    }
+  }, [isRepoCloned])
 
   useEvent("online", () => {
     send("SYNC")

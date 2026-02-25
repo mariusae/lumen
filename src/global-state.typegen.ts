@@ -40,6 +40,7 @@
         };
         eventsCausingActions: {
           "clearFileSystem": "SIGN_OUT" | "error.platform.global.resolvingUser:invocation[0]";
+"clearSessionUrl": "SIGN_OUT" | "error.platform.global.resolvingUser:invocation[0]";
 "clearGitHubRepo": "error.platform.global.signedIn.cloningRepo:invocation[0]";
 "clearGitHubUser": "SIGN_OUT" | "error.platform.global.resolvingUser:invocation[0]";
 "clearGitHubUserLocalStorage": "SIGN_OUT" | "error.platform.global.resolvingUser:invocation[0]";

@@ -18,7 +18,7 @@ export default defineConfig({
     visualizer({ filename: "dist/stats.html" }) as unknown as PluginOption,
     VitePWA({
       strategies: "generateSW",
-      registerType: "prompt",
+      registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: {
         name: "Lumen",
@@ -37,9 +37,10 @@ export default defineConfig({
         display: "standalone",
       },
       workbox: {
-        globPatterns: ["**/*.{html,css,js,woff2}"],
+        globPatterns: ["**/*.{html,css,js,woff2,png,svg}"],
         ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
         skipWaiting: true,
+        clientsClaim: true,
         navigateFallback: "index.html",
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         sourcemap: true,

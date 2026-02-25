@@ -8,9 +8,92 @@
     />
     <link rel="apple-touch-icon" href="/apple-touch-icon-512.png" />
     <meta name="theme-color" content="" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lumen" />
+
+    <!-- App shell styles — shown instantly while JS loads -->
+    <style>
+      #app-skeleton {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100svh;
+        background: #fdfdfc;
+        font-family: system-ui, sans-serif;
+      }
+      #app-skeleton .sk-header {
+        height: 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        gap: 12px;
+        flex-shrink: 0;
+      }
+      #app-skeleton .sk-bar {
+        height: 10px;
+        border-radius: 4px;
+        background: #f1f0ef;
+      }
+      #app-skeleton .sk-content {
+        flex: 1;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      #app-skeleton .sk-card {
+        height: 72px;
+        border-radius: 8px;
+        background: #f1f0ef;
+      }
+      @media (prefers-color-scheme: dark) {
+        #app-skeleton {
+          background: #111110;
+        }
+        #app-skeleton .sk-bar {
+          background: #222221;
+        }
+        #app-skeleton .sk-card {
+          background: #222221;
+        }
+      }
+      @media (pointer: coarse) {
+        #app-skeleton .sk-header {
+          height: 56px;
+        }
+      }
+      @keyframes sk-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      #app-skeleton .sk-bar,
+      #app-skeleton .sk-card {
+        animation: sk-pulse 1.5s ease-in-out infinite;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- App shell skeleton — replaced when React mounts -->
+      <div id="app-skeleton">
+        <div class="sk-header">
+          <div class="sk-bar" style="width: 80px"></div>
+        </div>
+        <div class="sk-content">
+          <div class="sk-card"></div>
+          <div class="sk-card"></div>
+          <div class="sk-card"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

@@ -1,0 +1,16 @@
+# XcodeGen clone (fetched by build.sh)
+.xcodegen/
+
+# Generated Xcode project
+*.xcodeproj/
+*.xcworkspace/
+
+# Bundled web assets (copied from dist/ by copy-web-assets.sh)
+Lumen/Resources/web/
+
+# Xcode build artifacts
+build/
+DerivedData/
+
+# App icon copied from public/
+Lumen/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png

@@ -6,24 +6,29 @@ Native iOS wrapper for Lumen using WKWebView. Provides background sync, state re
 
 - Xcode 15+
 - iOS 16.0+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 - Node.js (for building the web app)
 
 ## Build
 
 ```bash
-# 1. Build the web app (from the project root)
-npm run build
+# Full build: web app → copy assets → generate Xcode project
+app/scripts/build.sh
 
-# 2. Copy web assets into the iOS app bundle
-app/scripts/copy-web-assets.sh
+# Full build, then open Xcode
+app/scripts/build.sh --open
 
-# 3. Generate the Xcode project (from the app/ directory)
-cd app
-xcodegen generate
+# Skip the web build (if you already ran npm run build)
+app/scripts/build.sh --skip-web
+```
 
-# 4. Open in Xcode and build
-open Lumen.xcodeproj
+The build script handles everything: building the web app, copying assets into the bundle, cloning [XcodeGen](https://github.com/yonaskolb/XcodeGen) (one-time, into `app/.xcodegen/`), and generating the Xcode project via `swift run xcodegen`.
+
+You can also run the steps individually:
+
+```bash
+npm run build                      # build web app
+app/scripts/copy-web-assets.sh     # copy dist/ into bundle
+cd app && swift run --package-path .xcodegen xcodegen generate
 ```
 
 ## Development

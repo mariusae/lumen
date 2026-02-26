@@ -63,3 +63,13 @@ targets:
         SKIP_INSTALL: true
     entitlements:
       path: LumenShareExtension.entitlements
+
+schemes:
+  Lumen:
+    build:
+      targets:
+        Lumen: all
+        LumenShareExtension: all
+    run:
+      config: Debug
+      executable: Lumen

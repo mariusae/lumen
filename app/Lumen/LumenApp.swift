@@ -11,7 +11,7 @@ struct LumenApp: App {
         WindowGroup {
             ContentView()
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             switch phase {
             case .background:
                 BackgroundSync.shared.scheduleRefresh()

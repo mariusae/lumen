@@ -661,6 +661,20 @@ function NotePage() {
                 }
               />
               <DropdownMenu.Content align="end">
+                {isDraft ? (
+                  <>
+                    <DropdownMenu.Item
+                      icon={<UndoIcon16 />}
+                      onClick={() => {
+                        discardChanges()
+                        editorRef.current?.view?.focus()
+                      }}
+                    >
+                      Discard changes
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Separator />
+                  </>
+                ) : null}
                 {containerWidth > 800 && (
                   <>
                     <DropdownMenu.Group>

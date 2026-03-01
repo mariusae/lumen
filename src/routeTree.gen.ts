@@ -15,6 +15,7 @@ import { Route as AiImport } from "./routes/ai"
 import { Route as AppRootImport } from "./routes/_appRoot"
 import { Route as AppRootIndexImport } from "./routes/_appRoot.index"
 import { Route as ShareGistIdImport } from "./routes/share.$gistId"
+import { Route as AppRootTimelineImport } from "./routes/_appRoot.timeline"
 import { Route as AppRootSettingsImport } from "./routes/_appRoot.settings"
 import { Route as AppRootFileImport } from "./routes/_appRoot.file"
 import { Route as AppRootTagsIndexImport } from "./routes/_appRoot.tags.index"
@@ -45,6 +46,12 @@ const ShareGistIdRoute = ShareGistIdImport.update({
   id: "/share/$gistId",
   path: "/share/$gistId",
   getParentRoute: () => rootRoute,
+} as any)
+
+const AppRootTimelineRoute = AppRootTimelineImport.update({
+  id: "/timeline",
+  path: "/timeline",
+  getParentRoute: () => AppRootRoute,
 } as any)
 
 const AppRootSettingsRoute = AppRootSettingsImport.update({
@@ -115,6 +122,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppRootSettingsImport
       parentRoute: typeof AppRootImport
     }
+    "/_appRoot/timeline": {
+      id: "/_appRoot/timeline"
+      path: "/timeline"
+      fullPath: "/timeline"
+      preLoaderRoute: typeof AppRootTimelineImport
+      parentRoute: typeof AppRootImport
+    }
     "/share/$gistId": {
       id: "/share/$gistId"
       path: "/share/$gistId"
@@ -165,6 +179,7 @@ declare module "@tanstack/react-router" {
 interface AppRootRouteChildren {
   AppRootFileRoute: typeof AppRootFileRoute
   AppRootSettingsRoute: typeof AppRootSettingsRoute
+  AppRootTimelineRoute: typeof AppRootTimelineRoute
   AppRootIndexRoute: typeof AppRootIndexRoute
   AppRootNotesSplatRoute: typeof AppRootNotesSplatRoute
   AppRootTagsSplatRoute: typeof AppRootTagsSplatRoute
@@ -175,6 +190,7 @@ interface AppRootRouteChildren {
 const AppRootRouteChildren: AppRootRouteChildren = {
   AppRootFileRoute: AppRootFileRoute,
   AppRootSettingsRoute: AppRootSettingsRoute,
+  AppRootTimelineRoute: AppRootTimelineRoute,
   AppRootIndexRoute: AppRootIndexRoute,
   AppRootNotesSplatRoute: AppRootNotesSplatRoute,
   AppRootTagsSplatRoute: AppRootTagsSplatRoute,
@@ -189,6 +205,7 @@ export interface FileRoutesByFullPath {
   "/ai": typeof AiRoute
   "/file": typeof AppRootFileRoute
   "/settings": typeof AppRootSettingsRoute
+  "/timeline": typeof AppRootTimelineRoute
   "/share/$gistId": typeof ShareGistIdRoute
   "/": typeof AppRootIndexRoute
   "/notes/$": typeof AppRootNotesSplatRoute
@@ -201,6 +218,7 @@ export interface FileRoutesByTo {
   "/ai": typeof AiRoute
   "/file": typeof AppRootFileRoute
   "/settings": typeof AppRootSettingsRoute
+  "/timeline": typeof AppRootTimelineRoute
   "/share/$gistId": typeof ShareGistIdRoute
   "/": typeof AppRootIndexRoute
   "/notes/$": typeof AppRootNotesSplatRoute
@@ -215,6 +233,7 @@ export interface FileRoutesById {
   "/ai": typeof AiRoute
   "/_appRoot/file": typeof AppRootFileRoute
   "/_appRoot/settings": typeof AppRootSettingsRoute
+  "/_appRoot/timeline": typeof AppRootTimelineRoute
   "/share/$gistId": typeof ShareGistIdRoute
   "/_appRoot/": typeof AppRootIndexRoute
   "/_appRoot/notes_/$": typeof AppRootNotesSplatRoute
@@ -230,6 +249,7 @@ export interface FileRouteTypes {
     | "/ai"
     | "/file"
     | "/settings"
+    | "/timeline"
     | "/share/$gistId"
     | "/"
     | "/notes/$"
@@ -241,6 +261,7 @@ export interface FileRouteTypes {
     | "/ai"
     | "/file"
     | "/settings"
+    | "/timeline"
     | "/share/$gistId"
     | "/"
     | "/notes/$"
@@ -253,6 +274,7 @@ export interface FileRouteTypes {
     | "/ai"
     | "/_appRoot/file"
     | "/_appRoot/settings"
+    | "/_appRoot/timeline"
     | "/share/$gistId"
     | "/_appRoot/"
     | "/_appRoot/notes_/$"
@@ -294,6 +316,7 @@ export const routeTree = rootRoute
       "children": [
         "/_appRoot/file",
         "/_appRoot/settings",
+        "/_appRoot/timeline",
         "/_appRoot/",
         "/_appRoot/notes_/$",
         "/_appRoot/tags_/$",
@@ -310,6 +333,10 @@ export const routeTree = rootRoute
     },
     "/_appRoot/settings": {
       "filePath": "_appRoot.settings.tsx",
+      "parent": "/_appRoot"
+    },
+    "/_appRoot/timeline": {
+      "filePath": "_appRoot.timeline.tsx",
       "parent": "/_appRoot"
     },
     "/share/$gistId": {

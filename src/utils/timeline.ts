@@ -142,11 +142,18 @@ export function groupCommitsByDay(commits: CommitInfo[]): DayGroup[] {
     }
   }
 
-  // Return in reverse-chronological order (Map preserves insertion order, and commits are already sorted)
-  return Array.from(groups.entries()).map(([date, commits]) => ({
-    date,
-    commits,
-  }))
+  // Sort each day's commits by timestamp descending (newest first)
+  for (const dayCommits of groups.values()) {
+    dayCommits.sort((a, b) => b.timestamp - a.timestamp)
+  }
+
+  // Sort days by date descending (most recent day first)
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, commits]) => ({
+      date,
+      commits,
+    }))
 }
 
 function formatDateKey(date: Date): string {

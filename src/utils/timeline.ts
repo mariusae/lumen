@@ -47,9 +47,21 @@ export async function getCommitLog(): Promise<CommitInfo[]> {
 
   const result: CommitInfo[] = []
 
-  for (let i = 0; i < commits.length; i++) {
-    const commit = commits[i]
-    const parentOid = commits[i + 1]?.oid ?? null
+  for (const commit of commits) {
+    const parentOid = commit.commit.parent[0] ?? null
+
+    // Skip commits at the shallow clone boundary (parent not available locally).
+    // We can't compute a meaningful diff without the parent tree.
+    if (parentOid) {
+      try {
+        await git.readCommit({ fs, dir: REPO_DIR, oid: parentOid })
+      } catch {
+        continue
+      }
+    } else {
+      // Initial commit (no parent at all) — skip, as showing all files isn't useful
+      continue
+    }
 
     // Get files changed in this commit by comparing trees
     const files = await getChangedFiles(commit.oid, parentOid)
@@ -234,10 +246,12 @@ export async function computeDayChanges(day: DayGroup): Promise<DayEntry> {
       oid: oldestOid,
     })
     if (commit.parent.length > 0) {
+      // Verify the parent is actually readable (not a shallow boundary)
+      await git.readCommit({ fs, dir: REPO_DIR, oid: commit.parent[0] })
       beforeOid = commit.parent[0]
     }
   } catch {
-    // No parent (initial commit)
+    // No parent or parent not available (initial commit / shallow boundary)
   }
 
   const fileChanges: FileChange[] = []

@@ -21,8 +21,6 @@ export const Route = createFileRoute("/_appRoot/timeline")({
   }),
 })
 
-const DAYS_PER_BATCH = 7
-
 function TimelinePage() {
   const githubUser = useAtomValue(githubUserAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
@@ -34,6 +32,7 @@ function TimelinePage() {
   const [error, setError] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLElement>(null)
+  const loadingRef = useRef(false)
 
   const ctx = useMemo(
     () => (githubUser && githubRepo ? createTimelineContext(githubUser, githubRepo) : null),
@@ -69,38 +68,49 @@ function TimelinePage() {
     }
   }, [ctx])
 
-  // Load more days
-  const loadMore = useCallback(async () => {
-    if (isLoading || loadedIndex >= dayGroups.length || !ctx) return
-
+  // Load the next day, append it immediately, then continue until we have
+  // enough visible content or run out of days.
+  const loadNext = useCallback(async () => {
+    if (loadingRef.current || !ctx) return
+    loadingRef.current = true
     setIsLoading(true)
-    try {
-      const end = Math.min(loadedIndex + DAYS_PER_BATCH, dayGroups.length)
-      const batch = dayGroups.slice(loadedIndex, end)
 
-      const entries: DayEntry[] = []
-      for (const group of batch) {
+    try {
+      let idx = loadedIndex
+      let addedVisible = 0
+
+      // Load up to 3 visible days per trigger to build a buffer,
+      // but render each one as soon as it's ready.
+      while (idx < dayGroups.length && addedVisible < 3) {
+        const group = dayGroups[idx]
+        idx++
+
         const entry = await computeDayChanges(ctx, group)
+
+        // Update index immediately so concurrent triggers don't reprocess
+        setLoadedIndex(idx)
+
         if (entry.files.length > 0) {
-          entries.push(entry)
+          addedVisible++
+          setDayEntries((prev) => [...prev, entry])
         }
       }
 
-      setDayEntries((prev) => [...prev, ...entries])
-      setLoadedIndex(end)
+      setLoadedIndex(idx)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load timeline entries")
     } finally {
       setIsLoading(false)
+      loadingRef.current = false
     }
-  }, [isLoading, loadedIndex, dayGroups, ctx])
+  }, [loadedIndex, dayGroups, ctx])
 
   // Load first batch once day groups are available
   useEffect(() => {
     if (dayGroups.length > 0 && loadedIndex === 0) {
-      loadMore()
+      loadNext()
     }
-  }, [dayGroups, loadedIndex, loadMore])
+  }, [dayGroups, loadedIndex, loadNext])
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -111,18 +121,18 @@ function TimelinePage() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          loadMore()
+          loadNext()
         }
       },
       {
         root: scrollContainer,
-        rootMargin: "400px",
+        rootMargin: "600px",
       },
     )
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [loadMore])
+  }, [loadNext])
 
   const hasMore = loadedIndex < dayGroups.length
 
@@ -133,7 +143,7 @@ function TimelinePage() {
           <div className="py-8 text-center text-text-danger">{error}</div>
         ) : isInitializing ? (
           <div className="py-8 text-center text-text-secondary">Loading timeline…</div>
-        ) : dayEntries.length === 0 && !hasMore ? (
+        ) : dayEntries.length === 0 && !hasMore && !isLoading ? (
           <div className="py-8 text-center text-text-secondary">No changes found</div>
         ) : (
           <>
@@ -143,8 +153,8 @@ function TimelinePage() {
             {isLoading ? (
               <div className="py-4 text-center text-text-secondary">Loading…</div>
             ) : null}
-            {hasMore ? <div ref={sentinelRef} className="h-1" /> : null}
-            {!hasMore && dayEntries.length > 0 ? (
+            <div ref={sentinelRef} className="h-1" />
+            {!hasMore && !isLoading && dayEntries.length > 0 ? (
               <div className="py-8 text-center text-sm text-text-tertiary">End of timeline</div>
             ) : null}
           </>

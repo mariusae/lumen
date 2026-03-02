@@ -144,6 +144,17 @@ export async function getRemoteOriginUrl() {
 /** Fetch full commit history (unshallow a depth=1 clone) */
 export async function gitFetchFullHistory(user: GitHubUser) {
   const stopTimer = startTimer("git fetch --unshallow")
+
+  // Remove the shallow graft file BEFORE fetching. If present, isomorphic-git
+  // sends "shallow" lines to the server, causing it to only send objects newer
+  // than the boundary. Without it, the server does a full negotiation and sends
+  // all missing objects.
+  try {
+    await fs.promises.unlink(`${REPO_DIR}/.git/shallow`)
+  } catch {
+    // File may not exist (already unshallowed or never shallow)
+  }
+
   await git.fetch({
     fs,
     http,
@@ -152,14 +163,6 @@ export async function gitFetchFullHistory(user: GitHubUser) {
     singleBranch: true,
     onAuth: () => ({ username: user.login, password: user.token }),
   })
-
-  // Remove the shallow graft file so git.log() walks the full history.
-  // isomorphic-git's fetch doesn't remove it automatically.
-  try {
-    await fs.promises.unlink(`${REPO_DIR}/.git/shallow`)
-  } catch {
-    // File may not exist (already unshallowed or never shallow)
-  }
 
   stopTimer()
 }

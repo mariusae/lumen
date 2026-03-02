@@ -12,6 +12,7 @@ import {
   computeDayChanges,
   getCommitLog,
   groupCommitsByDay,
+  invalidateCommitLogCache,
 } from "../utils/timeline"
 
 export const Route = createFileRoute("/_appRoot/timeline")({
@@ -43,6 +44,7 @@ function TimelinePage() {
         // Fetch full history (unshallow the depth=1 clone)
         if (githubUser) {
           await gitFetchFullHistory(githubUser)
+          invalidateCommitLogCache()
         }
 
         const commits = await getCommitLog()

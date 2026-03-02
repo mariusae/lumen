@@ -24,6 +24,8 @@ import {
   SettingsIcon16,
   TagFillIcon16,
   TagIcon16,
+  TimelineFillIcon16,
+  TimelineIcon16,
 } from "./icons"
 import { NoteFavicon } from "./note-favicon"
 import { SyncStatusIcon, useSyncStatusText } from "./sync-status"
@@ -107,6 +109,17 @@ export function NavItems({
                 onNavigate={onNavigate}
               >
                 Calendar
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/timeline"
+                search={{}}
+                activeIcon={<TimelineFillIcon16 />}
+                icon={<TimelineIcon16 />}
+                onNavigate={onNavigate}
+              >
+                Timeline
               </NavLink>
             </li>
             <li>

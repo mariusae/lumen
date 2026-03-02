@@ -1,8 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { useAtomValue } from "jotai"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { TimelineIcon16 } from "../components/icons"
 import { MarkdownContent } from "../components/markdown"
 import { PageLayout } from "../components/page-layout"
+import { githubUserAtom } from "../global-state"
+import { gitFetchFullHistory } from "../utils/git"
 import {
   DayEntry,
   DayGroup,
@@ -21,6 +24,7 @@ export const Route = createFileRoute("/_appRoot/timeline")({
 const DAYS_PER_BATCH = 7
 
 function TimelinePage() {
+  const githubUser = useAtomValue(githubUserAtom)
   const [dayGroups, setDayGroups] = useState<DayGroup[]>([])
   const [dayEntries, setDayEntries] = useState<DayEntry[]>([])
   const [loadedIndex, setLoadedIndex] = useState(0)
@@ -30,12 +34,17 @@ function TimelinePage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLElement>(null)
 
-  // Initialize: load the commit log and group by day
+  // Initialize: fetch full history, then load the commit log and group by day
   useEffect(() => {
     let cancelled = false
 
     async function init() {
       try {
+        // Fetch full history (unshallow the depth=1 clone)
+        if (githubUser) {
+          await gitFetchFullHistory(githubUser)
+        }
+
         const commits = await getCommitLog()
         if (cancelled) return
         const groups = groupCommitsByDay(commits)
@@ -52,7 +61,7 @@ function TimelinePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [githubUser])
 
   // Load more days
   const loadMore = useCallback(async () => {

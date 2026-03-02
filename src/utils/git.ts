@@ -140,3 +140,17 @@ export async function getRemoteOriginUrl() {
 
   return remoteOriginUrl
 }
+
+/** Fetch full commit history (unshallow a depth=1 clone) */
+export async function gitFetchFullHistory(user: GitHubUser) {
+  const stopTimer = startTimer("git fetch --unshallow")
+  await git.fetch({
+    fs,
+    http,
+    dir: REPO_DIR,
+    corsProxy: "/cors-proxy",
+    singleBranch: true,
+    onAuth: () => ({ username: user.login, password: user.token }),
+  })
+  stopTimer()
+}

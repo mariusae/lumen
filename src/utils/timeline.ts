@@ -1,6 +1,4 @@
-import git from "isomorphic-git"
-import { fs } from "./fs"
-import { REPO_DIR } from "./git"
+import { GitHubRepository, GitHubUser } from "../schema"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -9,6 +7,7 @@ import { REPO_DIR } from "./git"
 export type CommitInfo = {
   oid: string
   timestamp: number
+  parentOid: string | null
   files: string[]
 }
 
@@ -28,117 +27,83 @@ export type DayEntry = {
   files: FileChange[]
 }
 
+type TimelineContext = {
+  token: string
+  owner: string
+  repo: string
+}
+
+// -----------------------------------------------------------------------------
+// GitHub API helpers
+// -----------------------------------------------------------------------------
+
+async function githubApi(ctx: TimelineContext, path: string): Promise<Response> {
+  const res = await fetch(`https://api.github.com/repos/${ctx.owner}/${ctx.repo}${path}`, {
+    headers: {
+      Authorization: `token ${ctx.token}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+  })
+  if (!res.ok) {
+    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`)
+  }
+  return res
+}
+
 // -----------------------------------------------------------------------------
 // Step 1: Get all commits with touched files
 // -----------------------------------------------------------------------------
 
-/** Cache for the full commit log */
 let commitLogCache: CommitInfo[] | null = null
 
-/** Get all commits with their touched markdown files, in reverse-chronological order. */
-export async function getCommitLog(): Promise<CommitInfo[]> {
+/** Fetch all commits from GitHub API, paginating through results. */
+export async function getCommitLog(ctx: TimelineContext): Promise<CommitInfo[]> {
   if (commitLogCache) return commitLogCache
 
-  const commits = await git.log({
-    fs,
-    dir: REPO_DIR,
-    ref: "HEAD",
-  })
+  const allCommits: CommitInfo[] = []
+  let page = 1
 
-  const result: CommitInfo[] = []
+  while (true) {
+    const res = await githubApi(ctx, `/commits?per_page=100&page=${page}`)
+    const commits = await res.json()
 
-  for (const commit of commits) {
-    const parentOid = commit.commit.parent[0] ?? null
+    if (!Array.isArray(commits) || commits.length === 0) break
 
-    // Skip commits at the shallow clone boundary (parent not available locally).
-    // We can't compute a meaningful diff without the parent tree.
-    if (parentOid) {
-      try {
-        await git.readCommit({ fs, dir: REPO_DIR, oid: parentOid })
-      } catch {
-        continue
-      }
-    } else {
-      // Initial commit (no parent at all) — skip, as showing all files isn't useful
-      continue
+    for (const commit of commits as Array<{
+      sha: string
+      commit: { committer: { date: string } }
+      parents: Array<{ sha: string }>
+    }>) {
+      const sha = commit.sha
+      const timestamp = Math.floor(new Date(commit.commit.committer.date).getTime() / 1000)
+      const parentOid = commit.parents?.[0]?.sha ?? null
+
+      allCommits.push({
+        oid: sha,
+        timestamp,
+        parentOid,
+        files: [], // Files will be determined per-day via the compare API
+      })
     }
 
-    // Get files changed in this commit by comparing trees
-    const files = await getChangedFiles(commit.oid, parentOid)
-    const mdFiles = files.filter(
-      (f) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."),
-    )
-
-    if (mdFiles.length === 0) continue
-
-    result.push({
-      oid: commit.oid,
-      timestamp: commit.commit.committer.timestamp,
-      files: mdFiles,
-    })
+    // Check for next page via Link header
+    const linkHeader = res.headers.get("Link")
+    if (!linkHeader || !linkHeader.includes('rel="next"')) break
+    page++
   }
 
-  commitLogCache = result
-  return result
+  commitLogCache = allCommits
+  return allCommits
 }
 
-/** Invalidate the commit log cache (call after sync) */
 export function invalidateCommitLogCache() {
   commitLogCache = null
-}
-
-/** Get files changed between a commit and its parent */
-async function getChangedFiles(oid: string, parentOid: string | null): Promise<string[]> {
-  const tree = await readTreeRecursive(oid)
-  const parentTree = parentOid ? await readTreeRecursive(parentOid) : new Map<string, string>()
-
-  const changed: string[] = []
-  for (const [path, blobOid] of tree) {
-    if (parentTree.get(path) !== blobOid) {
-      changed.push(path)
-    }
-  }
-
-  return changed
-}
-
-/** Recursively read all files in a commit's tree, returning Map<filepath, blobOid> */
-async function readTreeRecursive(commitOid: string): Promise<Map<string, string>> {
-  const result = new Map<string, string>()
-
-  const { commit } = await git.readCommit({
-    fs,
-    dir: REPO_DIR,
-    oid: commitOid,
-  })
-
-  async function walkTree(treeOid: string, prefix: string) {
-    const { tree } = await git.readTree({
-      fs,
-      dir: REPO_DIR,
-      oid: treeOid,
-    })
-
-    for (const entry of tree) {
-      const fullPath = prefix ? `${prefix}/${entry.path}` : entry.path
-
-      if (entry.type === "blob") {
-        result.set(fullPath, entry.oid)
-      } else if (entry.type === "tree") {
-        await walkTree(entry.oid, fullPath)
-      }
-    }
-  }
-
-  await walkTree(commit.tree, "")
-  return result
 }
 
 // -----------------------------------------------------------------------------
 // Step 2: Group commits by calendar day
 // -----------------------------------------------------------------------------
 
-/** Group commits by their local calendar date (YYYY-MM-DD) */
 export function groupCommitsByDay(commits: CommitInfo[]): DayGroup[] {
   const groups = new Map<string, CommitInfo[]>()
 
@@ -179,16 +144,20 @@ function formatDateKey(date: Date): string {
 // Step 3: Compute paragraph-level diffs for a day
 // -----------------------------------------------------------------------------
 
-/** Read a file's content at a specific commit OID. Returns empty string if not found. */
-async function readFileAtCommit(commitOid: string, filepath: string): Promise<string> {
+/** Read a file's content at a specific ref via GitHub API. Returns empty string if not found. */
+async function readFileAtRef(ctx: TimelineContext, ref: string, filepath: string): Promise<string> {
   try {
-    const { blob } = await git.readBlob({
-      fs,
-      dir: REPO_DIR,
-      oid: commitOid,
-      filepath,
-    })
-    return new TextDecoder().decode(blob)
+    const res = await fetch(
+      `https://api.github.com/repos/${ctx.owner}/${ctx.repo}/contents/${encodeURIComponent(filepath)}?ref=${ref}`,
+      {
+        headers: {
+          Authorization: `token ${ctx.token}`,
+          Accept: "application/vnd.github.v3.raw",
+        },
+      },
+    )
+    if (!res.ok) return ""
+    return await res.text()
   } catch {
     return ""
   }
@@ -218,47 +187,42 @@ function extractTitle(content: string): string {
   return match ? match[1].trim() : ""
 }
 
-/** Compute paragraph-level changes for a single day */
-export async function computeDayChanges(day: DayGroup): Promise<DayEntry> {
+/** Compute paragraph-level changes for a single day using the GitHub compare API */
+export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Promise<DayEntry> {
   const { date, commits } = day
-
-  // Collect all unique files touched this day, in order of most recent touch
-  const seenFiles = new Set<string>()
-  const orderedFiles: string[] = []
-  for (const commit of commits) {
-    for (const file of commit.files) {
-      if (!seenFiles.has(file)) {
-        seenFiles.add(file)
-        orderedFiles.push(file)
-      }
-    }
-  }
 
   const newestOid = commits[0].oid
   const oldestOid = commits[commits.length - 1].oid
+  const beforeOid = commits[commits.length - 1].parentOid
 
-  // Get the parent of the oldest commit for "before" state
-  let beforeOid: string | null = null
+  // If there's no parent (initial commit), we'd show everything — skip instead
+  if (!beforeOid) {
+    return { date, files: [] }
+  }
+
+  // Use the compare API to find which files changed across the day
+  let changedMdFiles: string[]
   try {
-    const { commit } = await git.readCommit({
-      fs,
-      dir: REPO_DIR,
-      oid: oldestOid,
-    })
-    if (commit.parent.length > 0) {
-      // Verify the parent is actually readable (not a shallow boundary)
-      await git.readCommit({ fs, dir: REPO_DIR, oid: commit.parent[0] })
-      beforeOid = commit.parent[0]
-    }
+    const res = await githubApi(ctx, `/compare/${beforeOid}...${newestOid}`)
+    const data = (await res.json()) as { files?: Array<{ filename: string }> }
+    changedMdFiles = (data.files ?? [])
+      .map((f: { filename: string }) => f.filename)
+      .filter(
+        (f: string) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."),
+      )
   } catch {
-    // No parent or parent not available (initial commit / shallow boundary)
+    return { date, files: [] }
+  }
+
+  if (changedMdFiles.length === 0) {
+    return { date, files: [] }
   }
 
   const fileChanges: FileChange[] = []
 
-  for (const filepath of orderedFiles) {
-    const afterContent = await readFileAtCommit(newestOid, filepath)
-    const beforeContent = beforeOid ? await readFileAtCommit(beforeOid, filepath) : ""
+  for (const filepath of changedMdFiles) {
+    const afterContent = await readFileAtRef(ctx, newestOid, filepath)
+    const beforeContent = await readFileAtRef(ctx, beforeOid, filepath)
 
     const afterStripped = stripFrontmatter(afterContent)
     const beforeStripped = stripFrontmatter(beforeContent)
@@ -271,7 +235,6 @@ export async function computeDayChanges(day: DayGroup): Promise<DayEntry> {
 
     if (changedParagraphs.length === 0) continue
 
-    // Extract title from the latest version, falling back to filename
     const title = extractTitle(afterContent) || filepath.replace(/\.md$/, "")
 
     fileChanges.push({
@@ -282,4 +245,16 @@ export async function computeDayChanges(day: DayGroup): Promise<DayEntry> {
   }
 
   return { date, files: fileChanges }
+}
+
+/** Create a TimelineContext from app state */
+export function createTimelineContext(
+  user: GitHubUser,
+  repo: GitHubRepository,
+): TimelineContext {
+  return {
+    token: user.token,
+    owner: repo.owner,
+    repo: repo.name,
+  }
 }

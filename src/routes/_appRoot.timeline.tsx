@@ -1,18 +1,17 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { TimelineIcon16 } from "../components/icons"
 import { MarkdownContent } from "../components/markdown"
 import { PageLayout } from "../components/page-layout"
-import { githubUserAtom } from "../global-state"
-import { gitFetchFullHistory } from "../utils/git"
+import { githubRepoAtom, githubUserAtom } from "../global-state"
 import {
   DayEntry,
   DayGroup,
   computeDayChanges,
+  createTimelineContext,
   getCommitLog,
   groupCommitsByDay,
-  invalidateCommitLogCache,
 } from "../utils/timeline"
 
 export const Route = createFileRoute("/_appRoot/timeline")({
@@ -26,6 +25,7 @@ const DAYS_PER_BATCH = 7
 
 function TimelinePage() {
   const githubUser = useAtomValue(githubUserAtom)
+  const githubRepo = useAtomValue(githubRepoAtom)
   const [dayGroups, setDayGroups] = useState<DayGroup[]>([])
   const [dayEntries, setDayEntries] = useState<DayEntry[]>([])
   const [loadedIndex, setLoadedIndex] = useState(0)
@@ -35,19 +35,23 @@ function TimelinePage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLElement>(null)
 
-  // Initialize: fetch full history, then load the commit log and group by day
+  const ctx = useMemo(
+    () => (githubUser && githubRepo ? createTimelineContext(githubUser, githubRepo) : null),
+    [githubUser, githubRepo],
+  )
+
+  // Initialize: load the commit log from GitHub API and group by day
   useEffect(() => {
+    if (!ctx) {
+      setIsInitializing(false)
+      return
+    }
+
     let cancelled = false
 
     async function init() {
       try {
-        // Fetch full history (unshallow the depth=1 clone)
-        if (githubUser) {
-          await gitFetchFullHistory(githubUser)
-          invalidateCommitLogCache()
-        }
-
-        const commits = await getCommitLog()
+        const commits = await getCommitLog(ctx!)
         if (cancelled) return
         const groups = groupCommitsByDay(commits)
         setDayGroups(groups)
@@ -63,11 +67,11 @@ function TimelinePage() {
     return () => {
       cancelled = true
     }
-  }, [githubUser])
+  }, [ctx])
 
   // Load more days
   const loadMore = useCallback(async () => {
-    if (isLoading || loadedIndex >= dayGroups.length) return
+    if (isLoading || loadedIndex >= dayGroups.length || !ctx) return
 
     setIsLoading(true)
     try {
@@ -76,8 +80,7 @@ function TimelinePage() {
 
       const entries: DayEntry[] = []
       for (const group of batch) {
-        const entry = await computeDayChanges(group)
-        // Only include days that have actual file changes
+        const entry = await computeDayChanges(ctx, group)
         if (entry.files.length > 0) {
           entries.push(entry)
         }
@@ -90,7 +93,7 @@ function TimelinePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, loadedIndex, dayGroups])
+  }, [isLoading, loadedIndex, dayGroups, ctx])
 
   // Load first batch once day groups are available
   useEffect(() => {

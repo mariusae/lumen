@@ -192,7 +192,6 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
   const { date, commits } = day
 
   const newestOid = commits[0].oid
-  const oldestOid = commits[commits.length - 1].oid
   const beforeOid = commits[commits.length - 1].parentOid
 
   // If there's no parent (initial commit), we'd show everything — skip instead
@@ -207,9 +206,7 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
     const data = (await res.json()) as { files?: Array<{ filename: string }> }
     changedMdFiles = (data.files ?? [])
       .map((f: { filename: string }) => f.filename)
-      .filter(
-        (f: string) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."),
-      )
+      .filter((f: string) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."))
   } catch {
     return { date, files: [] }
   }
@@ -218,12 +215,20 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
     return { date, files: [] }
   }
 
+  // Fetch all file contents in parallel (before and after for each file)
+  const contentPairs = await Promise.all(
+    changedMdFiles.map(async (filepath) => {
+      const [afterContent, beforeContent] = await Promise.all([
+        readFileAtRef(ctx, newestOid, filepath),
+        readFileAtRef(ctx, beforeOid, filepath),
+      ])
+      return { filepath, afterContent, beforeContent }
+    }),
+  )
+
   const fileChanges: FileChange[] = []
 
-  for (const filepath of changedMdFiles) {
-    const afterContent = await readFileAtRef(ctx, newestOid, filepath)
-    const beforeContent = await readFileAtRef(ctx, beforeOid, filepath)
-
+  for (const { filepath, afterContent, beforeContent } of contentPairs) {
     const afterStripped = stripFrontmatter(afterContent)
     const beforeStripped = stripFrontmatter(beforeContent)
 
@@ -248,10 +253,7 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
 }
 
 /** Create a TimelineContext from app state */
-export function createTimelineContext(
-  user: GitHubUser,
-  repo: GitHubRepository,
-): TimelineContext {
+export function createTimelineContext(user: GitHubUser, repo: GitHubRepository): TimelineContext {
   return {
     token: user.token,
     owner: repo.owner,

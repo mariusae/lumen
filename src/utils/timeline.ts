@@ -194,19 +194,30 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
   const newestOid = commits[0].oid
   const beforeOid = commits[commits.length - 1].parentOid
 
-  // If there's no parent (initial commit), we'd show everything — skip instead
-  if (!beforeOid) {
-    return { date, files: [] }
-  }
-
-  // Use the compare API to find which files changed across the day
+  // Get the list of changed .md files for this day
   let changedMdFiles: string[]
   try {
-    const res = await githubApi(ctx, `/compare/${beforeOid}...${newestOid}`)
-    const data = (await res.json()) as { files?: Array<{ filename: string }> }
-    changedMdFiles = (data.files ?? [])
-      .map((f: { filename: string }) => f.filename)
-      .filter((f: string) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."))
+    if (beforeOid) {
+      // Normal case: use compare API to find which files changed
+      const res = await githubApi(ctx, `/compare/${beforeOid}...${newestOid}`)
+      const data = (await res.json()) as { files?: Array<{ filename: string }> }
+      changedMdFiles = (data.files ?? [])
+        .map((f: { filename: string }) => f.filename)
+        .filter((f: string) => f.endsWith(".md") && !f.startsWith(".") && !f.includes("/."))
+    } else {
+      // Initial commit: all files are new — list them from the tree
+      const res = await githubApi(ctx, `/git/trees/${newestOid}?recursive=1`)
+      const data = (await res.json()) as { tree?: Array<{ path: string; type: string }> }
+      changedMdFiles = (data.tree ?? [])
+        .filter(
+          (f) =>
+            f.type === "blob" &&
+            f.path.endsWith(".md") &&
+            !f.path.startsWith(".") &&
+            !f.path.includes("/."),
+        )
+        .map((f) => f.path)
+    }
   } catch {
     return { date, files: [] }
   }
@@ -220,7 +231,7 @@ export async function computeDayChanges(ctx: TimelineContext, day: DayGroup): Pr
     changedMdFiles.map(async (filepath) => {
       const [afterContent, beforeContent] = await Promise.all([
         readFileAtRef(ctx, newestOid, filepath),
-        readFileAtRef(ctx, beforeOid, filepath),
+        beforeOid ? readFileAtRef(ctx, beforeOid, filepath) : Promise.resolve(""),
       ])
       return { filepath, afterContent, beforeContent }
     }),

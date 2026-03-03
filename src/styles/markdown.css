@@ -31,6 +31,10 @@
   min-width: 0;
 }
 
+.markdown :where(li + li) {
+  margin-block-start: calc(var(--font-size-base) * -0.625);
+}
+
 .markdown li :where(h1, h2, h3, h4, h5, h6, p, pre, table, blockquote, .pre-container) {
   margin-block: calc(var(--font-size-base) * 0.5);
 }

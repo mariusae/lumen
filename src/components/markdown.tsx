@@ -764,7 +764,7 @@ function ListItem({ node, children, ordered, className, ...props }: LiProps) {
       )}
     >
       <div
-        className={cx("flex px-1.5 py-[4.5px] gap-1.5 rounded-lg", {
+        className={cx("flex p-1.5 gap-1.5 rounded-lg", {
           "relative pr-10 sm:fine:pr-[74px] coarse:pr-12 group/task": isTask && onChange,
           "hover:bg-bg-hover": isTask && !isMenuOpen,
         })}

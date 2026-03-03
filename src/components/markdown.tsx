@@ -25,6 +25,7 @@ import {
 import { remarkEmbed } from "../remark-plugins/embed"
 import { remarkPriority } from "../remark-plugins/priority"
 import { remarkTag } from "../remark-plugins/tag"
+import { remarkTightList } from "../remark-plugins/tight-list"
 import { remarkWikilink } from "../remark-plugins/wikilink"
 import { templateSchema } from "../schema"
 import { cx } from "../utils/cx"
@@ -309,6 +310,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         remarkEmbed,
         remarkTag,
         remarkPriority,
+        remarkTightList,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
       rehypePlugins={[rehypeKatex, rehypeRaw]}

@@ -35,6 +35,10 @@
   margin-block-start: calc(var(--font-size-base) * -0.625);
 }
 
+.markdown :where(.tight-with-prev) {
+  margin-block-start: calc(var(--font-size-base) * -1.5);
+}
+
 .markdown li :where(h1, h2, h3, h4, h5, h6, p, pre, table, blockquote, .pre-container) {
   margin-block: calc(var(--font-size-base) * 0.5);
 }

@@ -937,7 +937,7 @@ function ListItem({ node, children, ordered, className, ...props }: LiProps) {
         ) : null}
       </div>
       {nestedLists.length > 0 && (
-        <div className="[&_:is(ul,ol)]:m-0! pl-7 coarse:pl-6">
+        <div className="[&_:is(ul,ol)]:m-0! pl-7 coarse:pl-6 mt-[calc(var(--font-size-base)*-0.625)]">
           {nestedLists.map((list, index) => (
             <React.Fragment key={index}>{list}</React.Fragment>
           ))}

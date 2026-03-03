@@ -28,6 +28,7 @@ import { remarkHighlight } from "../remark-plugins/highlight"
 import { remarkLinkCard } from "../remark-plugins/link-card"
 import { remarkPriority } from "../remark-plugins/priority"
 import { remarkTag } from "../remark-plugins/tag"
+import { remarkTightList } from "../remark-plugins/tight-list"
 import { remarkWikilink } from "../remark-plugins/wikilink"
 import { templateSchema } from "../schema"
 import { cx } from "../utils/cx"
@@ -317,6 +318,7 @@ export function MarkdownContent({ children, className }: { children: string; cla
         remarkPriority,
         remarkHighlight,
         remarkFold,
+        remarkTightList,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
       rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -1042,7 +1044,7 @@ function ListItem({ node, children, ordered, className, ...props }: LiProps) {
         ) : null}
       </div>
       {nestedLists.length > 0 && (
-        <div className="[&_:is(ul,ol)]:m-0! pl-7 coarse:pl-6">
+        <div className="[&_:is(ul,ol)]:m-0! pl-7 coarse:pl-6 mt-[calc(var(--font-size-base)*-0.625)]">
           {nestedLists.map((list, index) => (
             <React.Fragment key={index}>{list}</React.Fragment>
           ))}

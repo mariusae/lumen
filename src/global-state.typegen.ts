@@ -55,6 +55,8 @@
 "setGitHubRepo": "SELECT_REPO" | "done.invoke.global.signedIn.resolvingRepo:invocation[0]";
 "setGitHubUser": "SIGN_IN" | "done.invoke.global.resolvingUser:invocation[0]";
 "setGitHubUserLocalStorage": "SIGN_IN" | "done.invoke.global.resolvingUser:invocation[0]";
+"maybeSetMarkdownFiles": "done.invoke.global.signedIn.cloned.sync.pushing:invocation[0]";
+"maybeSetMarkdownFilesLocalStorage": "done.invoke.global.signedIn.cloned.sync.pushing:invocation[0]";
 "setMarkdownFiles": "done.invoke.global.signedIn.cloned.sync.pulling:invocation[0]" | "done.invoke.global.signedIn.cloningRepo:invocation[0]" | "done.invoke.global.signedIn.resolvingRepo:invocation[0]";
 "setMarkdownFilesLocalStorage": "done.invoke.global.signedIn.cloned.sync.pulling:invocation[0]" | "done.invoke.global.signedIn.cloningRepo:invocation[0]" | "done.invoke.global.signedIn.resolvingRepo:invocation[0]";
 "setSampleMarkdownFiles": "SIGN_OUT" | "error.platform.global.resolvingUser:invocation[0]";

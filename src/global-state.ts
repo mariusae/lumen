@@ -23,7 +23,7 @@ import {
   gitClone,
   gitCommit,
   gitPull,
-  gitPush,
+  gitPushWithRebase,
   gitRemove,
   isRepoSynced,
 } from "./utils/git"
@@ -87,7 +87,7 @@ function createGlobalStateMachine() {
             data: { markdownFiles: Record<string, string> }
           }
           push: {
-            data: void
+            data: { markdownFiles?: Record<string, string> }
           }
           checkStatus: {
             data: { isSynced: boolean }
@@ -266,7 +266,10 @@ function createGlobalStateMachine() {
                       ],
                       invoke: {
                         src: "push",
-                        onDone: "checkingStatus",
+                        onDone: {
+                          target: "checkingStatus",
+                          actions: ["maybeSetMarkdownFiles", "maybeSetMarkdownFilesLocalStorage"],
+                        },
                         onError: "error",
                       },
                     },
@@ -381,7 +384,7 @@ function createGlobalStateMachine() {
         push: async (context) => {
           if (!context.githubUser) throw new Error("Not signed in")
 
-          await gitPush(context.githubUser)
+          return await gitPushWithRebase(context.githubUser)
         },
         checkStatus: async () => {
           return { isSynced: await isRepoSynced() }
@@ -507,6 +510,20 @@ function createGlobalStateMachine() {
         setMarkdownFiles: assign({
           markdownFiles: (_, event) => event.data.markdownFiles,
         }),
+        maybeSetMarkdownFiles: assign({
+          markdownFiles: (context, event) => {
+            if (event.data.markdownFiles) return event.data.markdownFiles
+            return context.markdownFiles
+          },
+        }),
+        maybeSetMarkdownFilesLocalStorage: (context, event) => {
+          if (event.data.markdownFiles) {
+            localStorage.setItem(
+              MARKDOWN_FILES_STORAGE_KEY,
+              JSON.stringify(event.data.markdownFiles),
+            )
+          }
+        },
         setSampleMarkdownFiles: assign({
           markdownFiles: getSampleMarkdownFiles(),
         }),
